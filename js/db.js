@@ -44,9 +44,18 @@ function _objToDoc(obj) {
 }
 
 // ── REST API 헬퍼 ──────────────────────────────────────────────
+function _fetchTimeout(url, opts={}, ms=12000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
 async function _fsGetAll(col) {
-  const res = await fetch(`${_BASE}/${col}?key=${_KEY}&pageSize=1000`);
-  if (!res.ok) throw new Error(`Firestore ${col} 로드 실패: ${res.status}`);
+  const res = await _fetchTimeout(`${_BASE}/${col}?key=${_KEY}&pageSize=1000`);
+  if (res.status === 404) return []; // 빈 컬렉션 (데이터 없음)
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`${res.status} ${res.statusText} - ${txt.slice(0,200)}`);
+  }
   const json = await res.json();
   return (json.documents || []).map(_docToObj);
 }
