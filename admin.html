@@ -412,6 +412,34 @@
             </div>
           </div>
 
+          <!-- 운동 종목 관리 -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🏋️ 운동 종목 추가</span>
+            </div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+              <p class="text-sm text-muted">기본 제공 종목 외에 추가 종목을 등록합니다. 관리자·회원 운동 기록 모두에 표시됩니다.</p>
+              <div style="display:flex;gap:8px">
+                <select class="select" id="custom-ex-category" style="width:110px">
+                  <option value="기타">기타</option>
+                  <option value="하체">하체</option>
+                  <option value="가슴">가슴</option>
+                  <option value="등">등</option>
+                  <option value="어깨">어깨</option>
+                  <option value="팔">팔</option>
+                  <option value="복부">복부</option>
+                  <option value="코어">코어</option>
+                  <option value="기능성">기능성</option>
+                  <option value="유산소">유산소</option>
+                  <option value="스트레칭">스트레칭</option>
+                </select>
+                <input class="input" type="text" id="custom-ex-name" placeholder="종목 이름" style="flex:1" onkeydown="if(event.key==='Enter')addCustomExercise()">
+                <button class="btn btn-primary" onclick="addCustomExercise()">추가</button>
+              </div>
+              <div id="custom-ex-list"></div>
+            </div>
+          </div>
+
           <!-- 패키지 템플릿 -->
           <div class="card">
             <div class="card-header">
@@ -830,19 +858,7 @@ let calYear = today.getFullYear(), calMonth = today.getMonth() + 1;
 let selectedCalDate = null;
 let detailMemberId = null;
 
-// ===== EXERCISE DATABASE =====
-const EXERCISE_DB = {
-  '하체': ['스쿼트','프론트 스쿼트','고블릿 스쿼트','수모 스쿼트','핵 스쿼트','씨씨 스쿼트','스미스 스쿼트','박스 스쿼트','레그프레스','핵 레그프레스','레그컬','레그익스텐션','루마니안 데드리프트','싱글레그 데드리프트','힙쓰러스트','바벨 힙쓰러스트','글루트 브릿지','런지','리버스 런지','워킹 런지','불가리안 스플릿 스쿼트','스텝업','박스 점프','카프레이즈','시티드 카프레이즈','레그 어브덕션','레그 어덕션','힙 어브덕션 머신','힙 어덕션 머신','글루트 킥백','사이드 런지','월 스쿼트','래터럴 밴드 워크'],
-  '가슴': ['벤치프레스','인클라인 벤치프레스','디클라인 벤치프레스','클로즈그립 벤치프레스','덤벨 벤치프레스','인클라인 덤벨 프레스','덤벨 플라이','인클라인 덤벨 플라이','케이블 크로스오버','로우 케이블 플라이','하이 케이블 플라이','체스트 프레스 머신','펙덱 플라이','딥스','푸시업','와이드 푸시업','인클라인 푸시업','덤벨 풀오버'],
-  '등': ['데드리프트','루마니안 데드리프트','풀업','친업','클로즈그립 풀업','랫풀다운','클로즈그립 랫풀다운','리버스 그립 랫풀다운','시티드 케이블 로우','클로즈그립 로우','바벨 로우','언더그립 바벨 로우','원암 덤벨 로우','티바 로우','케이블 페이스풀','페이스풀','리버스 플라이','슈러그','굿모닝','백 익스텐션','하이퍼익스텐션','덤벨 풀오버'],
-  '어깨': ['오버헤드 바벨 프레스','덤벨 숄더프레스','아놀드 프레스','머신 숄더프레스','스미스 숄더프레스','사이드 레터럴 레이즈','케이블 레터럴 레이즈','밴드 레터럴 레이즈','프론트 레이즈','케이블 프론트 레이즈','리어 델트 플라이','케이블 리어 델트','페이스풀','밴드 페이스풀','업라이트 로우','케이블 업라이트 로우'],
-  '팔': ['바벨 컬','덤벨 컬','해머 컬','인클라인 덤벨 컬','프리처 컬','케이블 컬','리버스 컬','밴드 컬','21s 컬','컨센트레이션 컬','트라이셉스 푸시다운','V바 푸시다운','로프 푸시다운','오버헤드 트라이셉스 익스텐션','스컬크러셔','클로즈그립 벤치프레스','킥백','케이블 킥백'],
-  '복부': ['플랭크','사이드 플랭크','크런치','리버스 크런치','바이시클 크런치','레그레이즈','행잉 레그레이즈','힐터치','토터치','싯업','V업','러시안 트위스트','케이블 크런치','드래곤 플래그','에브 휠 롤아웃','풍차'],
-  '코어': ['데드버그','버드독','마운틴 클라이머','슈퍼맨','글루트 브릿지 싱글','팔로프 프레스','케이블 우드찹','롤아웃','터키시 겟업','TRX 파이크','스위스볼 플랭크','할로우 바디홀드','L싯','베어 크롤','코펜하겐 플랭크'],
-  '기능성': ['케틀벨 스윙','케틀벨 클린','케틀벨 스내치','케틀벨 고블릿 스쿼트','파워 클린','클린 앤 저크','스내치','배틀로프','메디신볼 슬램','메디신볼 로테이션','파머스워크','슬레드 푸시','슬레드 풀','타이어 플립','버피','점프 스쿼트','박스 점프','래터럴 점프','TRX 로우','TRX 체스트프레스','밴드 몬스터워크'],
-  '유산소': ['트레드밀','인클라인 트레드밀','싸이클','에어바이크','로잉머신','스텝밀','일립티컬','스키에르그','줄넘기','스피닝','계단오르기','배틀로프 인터벌'],
-  '스트레칭': ['폼롤러 허벅지','폼롤러 종아리','폼롤러 등','폼롤러 IT밴드','고관절 굴곡근 스트레칭','햄스트링 스트레칭','사두근 스트레칭','흉추 스트레칭','어깨 스트레칭','가슴 스트레칭','고양이 낙타 자세','차일드 포즈','피전 포즈','라잉 글루트 스트레칭','월 스트레칭']
-};
+// EXERCISE_DB는 db.js에서 로드됨
 
 // ===== INIT =====
 DB.init().then(() => {
@@ -885,6 +901,7 @@ function showPanel(name) {
     if (linkEl) linkEl.value = location.href.replace('admin.html', 'member-login.html');
     populateMemberSelects();
     renderPkgTemplates();
+    renderCustomExercises();
   }
   if (name === 'pt') renderPtPanel();
   if (name === 'routines') renderRoutinesPanel();
@@ -1727,6 +1744,44 @@ function renderPtPanel() {
   }
 }
 
+// ===== 커스텀 운동 종목 =====
+function renderCustomExercises() {
+  const list = document.getElementById('custom-ex-list');
+  if (!list) return;
+  const customs = DB.getCustomExercises();
+  if (!customs.length) { list.innerHTML = '<div class="text-sm text-muted">추가된 종목이 없습니다</div>'; return; }
+  list.innerHTML = customs.map(e => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div><span class="badge badge-blue" style="margin-right:6px">${e.category}</span><span style="font-size:0.9rem">${e.name}</span></div>
+      <button class="btn btn-red btn-sm btn-icon" onclick="deleteCustomExercise('${e.id}')">🗑</button>
+    </div>`).join('');
+}
+
+function addCustomExercise() {
+  const name = document.getElementById('custom-ex-name').value.trim();
+  const category = document.getElementById('custom-ex-category').value;
+  if (!name) { toast('종목 이름을 입력하세요', 'error'); return; }
+  const result = DB.addCustomExercise(name, category);
+  if (!result) { toast('이미 존재하는 종목입니다', 'error'); return; }
+  document.getElementById('custom-ex-name').value = '';
+  renderCustomExercises();
+  refreshExerciseSearchList();
+  toast(`"${name}" 종목이 추가되었습니다`, 'success');
+}
+
+function deleteCustomExercise(id) {
+  DB.deleteCustomExercise(id);
+  renderCustomExercises();
+  refreshExerciseSearchList();
+  toast('삭제되었습니다');
+}
+
+function refreshExerciseSearchList() {
+  const dl = document.getElementById('exercise-search-list');
+  if (!dl) return;
+  dl.innerHTML = getAllExerciseNames().map(n => `<option value="${n}">`).join('');
+}
+
 // ===== 패키지 템플릿 =====
 function renderPkgTemplates() {
   const list = document.getElementById('pkg-template-list');
@@ -1865,8 +1920,7 @@ function renderRoutinesPanel() {
 let exLibCategory = '하체';
 
 function initExLibrary() {
-  // 카테고리 탭
-  const cats = Object.keys(EXERCISE_DB);
+  const cats = [...Object.keys(EXERCISE_DB), ...(DB.getCustomExercises().length ? ['기타'] : [])];
   document.getElementById('ex-lib-cats').innerHTML = cats.map(c =>
     `<span class="tag ${c===exLibCategory?'tag-selected':'tag-unselected'}" onclick="setExLibCat('${c}')">${c}</span>`
   ).join('');
@@ -1882,9 +1936,7 @@ function setExLibCat(cat) {
 function filterExLibrary() {
   const q = document.getElementById('ex-lib-search').value.trim().toLowerCase();
   if (q) {
-    // 검색 모드: 전체 종목에서 검색
-    const all = Object.values(EXERCISE_DB).flat();
-    const filtered = all.filter(e => e.toLowerCase().includes(q));
+    const filtered = getAllExerciseNames().filter(e => e.toLowerCase().includes(q));
     renderExLibGrid(filtered);
   } else {
     renderExLibGrid();
@@ -1892,7 +1944,9 @@ function filterExLibrary() {
 }
 
 function renderExLibGrid(overrideList) {
-  const list = overrideList || EXERCISE_DB[exLibCategory] || [];
+  const baseList = EXERCISE_DB[exLibCategory] || [];
+  const customInCat = DB.getCustomExercises().filter(e => e.category === exLibCategory || exLibCategory === '기타').map(e => e.name);
+  const list = overrideList || [...new Set([...baseList, ...customInCat])];
   const checked = getCheckedExercises();
   document.getElementById('ex-lib-grid').innerHTML = list.map(name => {
     const isChecked = checked.includes(name);

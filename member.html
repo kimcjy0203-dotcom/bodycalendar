@@ -264,15 +264,7 @@
   </div>
 </div>
 
-<datalist id="exercise-list">
-  <option value="스쿼트"><option value="레그프레스"><option value="런지"><option value="힙쓰러스트"><option value="데드리프트"><option value="루마니안 데드리프트">
-  <option value="벤치프레스"><option value="인클라인 벤치프레스"><option value="덤벨 플라이"><option value="딥스"><option value="푸시업">
-  <option value="풀업"><option value="랫풀다운"><option value="시티드 케이블 로우"><option value="바벨 로우"><option value="원암 덤벨 로우">
-  <option value="오버헤드 프레스"><option value="덤벨 숄더프레스"><option value="사이드 레터럴 레이즈"><option value="리어 델트 플라이">
-  <option value="바벨 컬"><option value="덤벨 컬"><option value="해머 컬"><option value="트라이셉스 푸시다운"><option value="스컬크러셔">
-  <option value="플랭크"><option value="크런치"><option value="레그레이즈"><option value="러시안 트위스트">
-  <option value="케틀벨 스윙"><option value="버피"><option value="트레드밀"><option value="싸이클"><option value="로잉머신">
-</datalist>
+<datalist id="exercise-list"></datalist>
 
 <div id="toast"></div>
 <script src="js/db.js"></script>
@@ -294,6 +286,8 @@ DB.init().then(() => {
   renderStats();
   renderNotices();
   renderCalendar();
+  // 운동 종목 datalist 채우기
+  document.getElementById('exercise-list').innerHTML = getAllExerciseNames().map(n => `<option value="${n}">`).join('');
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = '';
 }).catch(e => {
