@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>바디캘린더</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-<div class="member-layout">
+<div id="loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">데이터 불러오는 중...</div></div>
+<div class="member-layout" id="app" style="display:none">
 
   <!-- HEADER -->
   <div class="member-header">
@@ -222,24 +225,27 @@
 <script>
 if (DB.getRole() !== 'member') { location.href = 'index.html'; }
 
-DB.init();
-
 const memberId = DB.getCurrentMemberId();
-const member = DB.getMember(memberId);
-if (!member) { DB.logout(); location.href = 'index.html'; }
-
 const today = new Date();
 let calYear = today.getFullYear(), calMonth = today.getMonth() + 1;
 let selectedDate = null;
+let member = null;
 
-// Init
-document.getElementById('header-name').textContent = `안녕하세요, ${member.name}님! 👋`;
-const now = today.toISOString().slice(0,7);
-document.getElementById('session-month-filter').value = now;
-
-renderStats();
-renderNotices();
-renderCalendar();
+DB.init().then(() => {
+  member = DB.getMember(memberId);
+  if (!member) { DB.logout(); location.href = 'index.html'; return; }
+  document.getElementById('header-name').textContent = `안녕하세요, ${member.name}님! 👋`;
+  const now = today.toISOString().slice(0,7);
+  document.getElementById('session-month-filter').value = now;
+  renderStats();
+  renderNotices();
+  renderCalendar();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = '';
+}).catch(e => {
+  console.error(e);
+  document.getElementById('loading').innerHTML = '<div class="spinner"></div><div class="loading-text" style="color:var(--red)">서버 연결 실패. 새로고침 해주세요.</div>';
+});
 
 function renderStats() {
   const stats = DB.getMemberStats(memberId);

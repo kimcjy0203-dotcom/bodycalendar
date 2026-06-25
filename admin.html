@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>관리자 - 바디캘린더</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-<div class="admin-layout">
+<div id="loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">데이터 불러오는 중...</div></div>
+<div class="admin-layout" id="app" style="display:none">
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
@@ -775,10 +778,7 @@
 <div id="toast"></div>
 <script src="js/db.js"></script>
 <script>
-// Auth check
 if (DB.getRole() !== 'admin') { location.href = 'index.html'; }
-
-DB.init();
 
 const today = new Date();
 let calYear = today.getFullYear(), calMonth = today.getMonth() + 1;
@@ -800,18 +800,23 @@ const EXERCISE_DB = {
 };
 
 // ===== INIT =====
-document.getElementById('today-date').textContent = formatDate(today.toISOString().split('T')[0]);
-document.getElementById('today-label').textContent = today.toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'});
-document.getElementById('s-date').value = today.toISOString().split('T')[0];
-document.getElementById('sch-date').value = today.toISOString().split('T')[0];
-document.getElementById('m-joindate').value = today.toISOString().split('T')[0];
-
-const now = today.toISOString().slice(0,7);
-document.getElementById('session-filter-month').value = now;
-document.getElementById('sch-filter-month').value = now;
-document.getElementById('att-month').value = now;
-
-renderAll();
+DB.init().then(() => {
+  document.getElementById('today-date').textContent = formatDate(today.toISOString().split('T')[0]);
+  document.getElementById('today-label').textContent = today.toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'});
+  document.getElementById('s-date').value = today.toISOString().split('T')[0];
+  document.getElementById('sch-date').value = today.toISOString().split('T')[0];
+  document.getElementById('m-joindate').value = today.toISOString().split('T')[0];
+  const now = today.toISOString().slice(0,7);
+  document.getElementById('session-filter-month').value = now;
+  document.getElementById('sch-filter-month').value = now;
+  document.getElementById('att-month').value = now;
+  renderAll();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = '';
+}).catch(e => {
+  console.error(e);
+  document.getElementById('loading').innerHTML = '<div class="spinner"></div><div class="loading-text" style="color:var(--red)">서버 연결 실패. 새로고침 해주세요.</div>';
+});
 
 // ===== PANEL =====
 function showPanel(name) {
@@ -2010,8 +2015,13 @@ function importBackup(input) {
   if (!confirm('현재 데이터가 백업 파일로 덮어씌워집니다. 계속하시겠습니까?')) { input.value = ''; return; }
   const reader = new FileReader();
   reader.onload = e => {
-    try { DB.importBackup(e.target.result); toast('데이터가 복원되었습니다. 페이지를 새로고침합니다', 'success'); setTimeout(() => location.reload(), 1500); }
-    catch { toast('파일 형식이 올바르지 않습니다', 'error'); }
+    try {
+      toast('복원 중...', '');
+      DB.importBackup(e.target.result).then(() => {
+        toast('데이터가 복원되었습니다. 새로고침합니다', 'success');
+        setTimeout(() => location.reload(), 1500);
+      }).catch(() => toast('복원 중 오류가 발생했습니다', 'error'));
+    } catch { toast('파일 형식이 올바르지 않습니다', 'error'); }
   };
   reader.readAsText(file);
   input.value = '';

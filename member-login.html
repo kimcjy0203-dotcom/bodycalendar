@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>바디캘린더 - 회원 로그인</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 .reset-panel { display: none; }
 .reset-panel.active { display: flex; flex-direction: column; gap: 14px; }
@@ -17,7 +19,8 @@
 </style>
 </head>
 <body>
-<div class="login-page">
+<div id="loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">연결 중...</div></div>
+<div class="login-page" id="app" style="display:none">
   <div class="login-box">
     <div class="login-header" style="background:linear-gradient(135deg,#8B7FEE 0%,#5BAFF7 100%)">
       <div class="login-logo">🏋️</div>
@@ -109,10 +112,14 @@
 <div id="toast"></div>
 <script src="js/db.js"></script>
 <script>
-DB.init();
-
-if (DB.getRole() === 'member') location.href = 'member.html';
-if (DB.getRole() === 'admin') location.href = 'admin.html';
+DB.init().then(() => {
+  if (DB.getRole() === 'member') { location.href = 'member.html'; return; }
+  if (DB.getRole() === 'admin') { location.href = 'admin.html'; return; }
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = '';
+}).catch(() => {
+  document.getElementById('loading').innerHTML = '<div class="spinner"></div><div class="loading-text" style="color:var(--red)">서버 연결 실패. 새로고침 해주세요.</div>';
+});
 
 let resetTargetId = null;
 

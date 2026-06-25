@@ -5,13 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>바디캘린더</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 .login-panel { display: none; }
 .login-panel.active { display: flex; flex-direction: column; gap: 14px; }
 </style>
 </head>
 <body>
-<div class="login-page">
+<div id="loading" class="loading-overlay"><div class="spinner"></div><div class="loading-text">연결 중...</div></div>
+<div class="login-page" id="app" style="display:none">
   <div class="login-box">
     <div class="login-header">
       <div class="login-logo">🏋️</div>
@@ -55,12 +58,15 @@
 <div id="toast"></div>
 <script src="js/db.js"></script>
 <script>
-DB.init();
-
-// Already logged in?
-const role = DB.getRole();
-if (role === 'admin') location.href = 'admin.html';
-else if (role === 'member') location.href = 'member.html';
+DB.init().then(() => {
+  const role = DB.getRole();
+  if (role === 'admin') { location.href = 'admin.html'; return; }
+  if (role === 'member') { location.href = 'member.html'; return; }
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = '';
+}).catch(() => {
+  document.getElementById('loading').innerHTML = '<div class="spinner"></div><div class="loading-text" style="color:var(--red)">서버 연결 실패. 새로고침 해주세요.</div>';
+});
 
 function switchTab(tab) {
   document.querySelectorAll('.login-tab').forEach((el, i) => {
