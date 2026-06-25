@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>바디캘린더</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="member-layout">
+
+  <!-- HEADER -->
+  <div class="member-header">
+    <div class="member-header-info">
+      <h1 id="header-name">안녕하세요!</h1>
+      <p id="header-sub">오늘도 화이팅하세요 💪</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()" style="color:#fff;border-color:rgba(255,255,255,0.3)">로그아웃</button>
+  </div>
+
+  <!-- NOTICE BANNER -->
+  <div id="notice-banner"></div>
+
+  <!-- STATS BAR -->
+  <div style="background:#fff;border-bottom:1px solid var(--border);padding:0 20px">
+    <div style="max-width:700px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);text-align:center;padding:12px 0">
+      <div>
+        <div style="font-size:1.3rem;font-weight:800;color:var(--primary)" id="stat-total">0</div>
+        <div style="font-size:0.7rem;color:var(--text-2)">총 세션</div>
+      </div>
+      <div>
+        <div style="font-size:1.3rem;font-weight:800;color:var(--orange)" id="stat-month">0</div>
+        <div style="font-size:0.7rem;color:var(--text-2)">이번달</div>
+      </div>
+      <div>
+        <div style="font-size:1.3rem;font-weight:800;color:var(--green)" id="stat-att">0%</div>
+        <div style="font-size:0.7rem;color:var(--text-2)">출석률</div>
+      </div>
+      <div>
+        <div style="font-size:1.3rem;font-weight:800;color:var(--yellow)" id="stat-upcoming">0</div>
+        <div style="font-size:0.7rem;color:var(--text-2)">예정</div>
+      </div>
+      <div>
+        <div style="font-size:1.3rem;font-weight:800;color:var(--primary)" id="stat-pt">-</div>
+        <div style="font-size:0.7rem;color:var(--text-2)">PT 잔여</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV TABS -->
+  <div class="member-nav">
+    <div class="member-nav-item active" onclick="switchTab('calendar')">📅 캘린더</div>
+    <div class="member-nav-item" onclick="switchTab('sessions')">💪 세션 기록</div>
+    <div class="member-nav-item" onclick="switchTab('stats')">📊 통계</div>
+    <div class="member-nav-item" onclick="switchTab('profile')">👤 내 정보</div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="member-main">
+
+    <!-- CALENDAR TAB -->
+    <div id="tab-calendar">
+      <div class="card mb-4">
+        <div class="card-header">
+          <div class="cal-nav">
+            <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
+            <span class="cal-month" id="cal-month-label"></span>
+            <button class="cal-nav-btn" onclick="calNav(1)">›</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="goToday()">오늘</button>
+        </div>
+        <div class="card-body" style="padding:12px">
+          <div class="calendar-wrap">
+            <div class="cal-grid">
+              <div class="cal-day-label">일</div>
+              <div class="cal-day-label">월</div>
+              <div class="cal-day-label">화</div>
+              <div class="cal-day-label">수</div>
+              <div class="cal-day-label">목</div>
+              <div class="cal-day-label">금</div>
+              <div class="cal-day-label">토</div>
+            </div>
+            <div class="cal-grid" id="cal-body" style="margin-top:1px"></div>
+          </div>
+          <div class="flex gap-3 mt-2" style="font-size:0.75rem;color:var(--text-2)">
+            <span>● <span style="color:var(--primary)">예정</span></span>
+            <span>● <span style="color:var(--green)">완료</span></span>
+            <span>● <span style="color:var(--text-3)">취소</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SELECTED DATE DETAIL -->
+      <div id="date-detail" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" id="detail-date-label"></span>
+          </div>
+          <div class="card-body" id="detail-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SESSIONS TAB -->
+    <div id="tab-sessions" style="display:none">
+      <div class="flex items-center justify-between mb-4">
+        <h2 style="font-size:1rem;font-weight:700">세션 기록</h2>
+        <input class="input" type="month" id="session-month-filter" style="width:145px" onchange="renderSessionsTab()">
+      </div>
+      <div id="sessions-list"></div>
+    </div>
+
+    <!-- STATS TAB -->
+    <div id="tab-stats" style="display:none">
+      <div class="card mb-4">
+        <div class="card-header"><span class="card-title">🏆 종목별 최고 무게</span></div>
+        <div class="card-body" id="exercise-stats-body" style="min-height:80px"></div>
+      </div>
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="card-title">🎟️ PT 잔여 횟수</span>
+        </div>
+        <div class="card-body" id="pt-status-body" style="min-height:60px"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">📅 월별 세션 현황</span></div>
+        <div class="card-body" id="monthly-stats-body" style="min-height:80px"></div>
+      </div>
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div id="tab-profile" style="display:none">
+      <div class="card mb-4">
+        <div class="card-header"><span class="card-title">내 정보</span></div>
+        <div class="card-body" id="profile-info"></div>
+      </div>
+      <!-- 체중 기록 -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="card-title">⚖️ 체중 기록</span>
+          <button class="btn btn-primary btn-sm" onclick="openWeightModal()">+ 기록 추가</button>
+        </div>
+        <div class="card-body">
+          <div id="weight-chart" style="margin-bottom:12px"></div>
+          <div id="weight-log-list" style="max-height:200px;overflow-y:auto"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">비밀번호 변경</span></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+          <div class="input-group">
+            <label>현재 비밀번호</label>
+            <input class="input" type="password" id="cur-pw" placeholder="현재 비밀번호">
+          </div>
+          <div class="input-group">
+            <label>새 비밀번호</label>
+            <input class="input" type="password" id="new-pw" placeholder="새 비밀번호">
+          </div>
+          <div class="input-group">
+            <label>새 비밀번호 확인</label>
+            <input class="input" type="password" id="new-pw2" placeholder="재입력">
+          </div>
+          <button class="btn btn-primary" onclick="changePw()">변경하기</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- WEIGHT MODAL -->
+<div class="modal-overlay" id="modal-weight">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">체중 기록</span>
+      <button class="close-btn" onclick="document.getElementById('modal-weight').classList.remove('active')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="input-group">
+        <label>날짜</label>
+        <input class="input" type="date" id="w-date">
+      </div>
+      <div class="grid-2">
+        <div class="input-group">
+          <label>몸무게 (kg) *</label>
+          <input class="input" type="number" id="w-weight" placeholder="예: 68.5" step="0.1">
+        </div>
+        <div class="input-group">
+          <label>체지방률 (%)</label>
+          <input class="input" type="number" id="w-bodyfat" placeholder="예: 18.5" step="0.1">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>골격근량 (kg)</label>
+        <input class="input" type="number" id="w-muscle" placeholder="예: 32.0" step="0.1">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-weight').classList.remove('active')">취소</button>
+      <button class="btn btn-primary" onclick="saveWeightLog()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION DETAIL MODAL -->
+<div class="modal-overlay" id="modal-session">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="session-modal-title">세션 상세</span>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="session-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/db.js"></script>
+<script>
+if (DB.getRole() !== 'member') { location.href = 'index.html'; }
+
+DB.init();
+
+const memberId = DB.getCurrentMemberId();
+const member = DB.getMember(memberId);
+if (!member) { DB.logout(); location.href = 'index.html'; }
+
+const today = new Date();
+let calYear = today.getFullYear(), calMonth = today.getMonth() + 1;
+let selectedDate = null;
+
+// Init
+document.getElementById('header-name').textContent = `안녕하세요, ${member.name}님! 👋`;
+const now = today.toISOString().slice(0,7);
+document.getElementById('session-month-filter').value = now;
+
+renderStats();
+renderNotices();
+renderCalendar();
+
+function renderStats() {
+  const stats = DB.getMemberStats(memberId);
+  document.getElementById('stat-total').textContent = stats.total;
+  document.getElementById('stat-month').textContent = stats.thisMonth;
+  document.getElementById('stat-att').textContent = stats.attendance + '%';
+  document.getElementById('stat-upcoming').textContent = stats.upcomingCount;
+  const pt = DB.getPtRemaining(memberId);
+  document.getElementById('stat-pt').textContent = pt ? pt.remaining + '회' : '-';
+}
+
+function renderNotices() {
+  const notices = DB.getNotices();
+  const banner = document.getElementById('notice-banner');
+  if (!notices.length) { banner.innerHTML = ''; return; }
+  const sorted = [...notices].sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0) || b.date.localeCompare(a.date));
+  banner.innerHTML = sorted.slice(0,3).map(n => `
+    <div style="background:${n.pinned?'var(--primary-light)':'#FFF9EC'};border-bottom:1px solid ${n.pinned?'var(--primary)':'var(--yellow)'};padding:10px 20px;display:flex;align-items:flex-start;gap:10px">
+      <span style="font-size:1rem">${n.pinned?'📌':'📢'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:0.875rem;color:${n.pinned?'var(--primary)':'var(--text)'}">${n.title}</div>
+        <div style="font-size:0.8rem;color:var(--text-2);margin-top:2px;white-space:pre-wrap">${n.content}</div>
+      </div>
+      <div style="font-size:0.7rem;color:var(--text-3);white-space:nowrap">${n.date}</div>
+    </div>`).join('');
+}
+
+// ===== TABS =====
+function switchTab(name) {
+  ['calendar','sessions','stats','profile'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.member-nav-item').forEach((el, i) => {
+    el.classList.toggle('active', (['calendar','sessions','stats','profile'][i]) === name);
+  });
+  if (name === 'sessions') renderSessionsTab();
+  if (name === 'stats') renderStatsTab();
+  if (name === 'profile') { renderProfile(); renderWeightLog(); }
+}
+
+// ===== CALENDAR =====
+function calNav(dir) {
+  calMonth += dir;
+  if (calMonth > 12) { calMonth = 1; calYear++; }
+  if (calMonth < 1) { calMonth = 12; calYear--; }
+  renderCalendar();
+  selectedDate = null;
+  document.getElementById('date-detail').style.display = 'none';
+}
+
+function goToday() {
+  calYear = today.getFullYear();
+  calMonth = today.getMonth() + 1;
+  renderCalendar();
+  selectDate(today.toISOString().split('T')[0]);
+}
+
+function renderCalendar() {
+  document.getElementById('cal-month-label').textContent = `${calYear}년 ${calMonth}월`;
+  const schedules = DB.getMemberSchedules(memberId).filter(s => s.date.startsWith(`${calYear}-${String(calMonth).padStart(2,'0')}`));
+  const sessions = DB.getMemberSessions(memberId).filter(s => s.date.startsWith(`${calYear}-${String(calMonth).padStart(2,'0')}`));
+
+  const firstDay = new Date(calYear, calMonth-1, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+  const prevDays = new Date(calYear, calMonth-1, 0).getDate();
+  const todayStr = today.toISOString().split('T')[0];
+
+  let cells = '';
+  const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+  for (let i = 0; i < totalCells; i++) {
+    let day, dateStr, isOther = false;
+    if (i < firstDay) { day = prevDays - firstDay + i + 1; const d = new Date(calYear, calMonth-2, day); dateStr = d.toISOString().split('T')[0]; isOther = true; }
+    else if (i >= firstDay + daysInMonth) { day = i - firstDay - daysInMonth + 1; const d = new Date(calYear, calMonth, day); dateStr = d.toISOString().split('T')[0]; isOther = true; }
+    else { day = i - firstDay + 1; dateStr = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`; }
+
+    const daySch = schedules.filter(s => s.date === dateStr);
+    const daySes = sessions.filter(s => s.date === dateStr);
+    const isToday = dateStr === todayStr;
+    const isSel = dateStr === selectedDate;
+
+    // Text labels
+    let indicators = '';
+    if (daySes.length > 0) {
+      indicators = daySes.map(s => {
+        const exNames = (s.exercises||[]).map(e => e.name).join('·');
+        const label = exNames ? exNames.substring(0, 10) + (exNames.length > 10 ? '..' : '') : '운동 완료';
+        return `<div class="cal-event ${s.attendance===false?'cal-event-cancelled':'cal-event-completed'}">${s.attendance===false?'결석':label}</div>`;
+      }).join('');
+    } else if (daySch.length > 0) {
+      indicators = daySch.map(s =>
+        `<div class="cal-event cal-event-${s.status}">PT${s.time?' '+s.time:''}</div>`
+      ).join('');
+    }
+
+    cells += `<div class="cal-cell ${isOther?'other-month':''} ${isToday?'today':''} ${isSel?'selected':''}" onclick="selectDate('${dateStr}')">
+      <div class="cal-date">${day}</div>
+      ${indicators}
+    </div>`;
+  }
+  document.getElementById('cal-body').innerHTML = cells;
+}
+
+function selectDate(dateStr) {
+  selectedDate = dateStr;
+  renderCalendar();
+  const detailEl = document.getElementById('date-detail');
+  const contentEl = document.getElementById('detail-content');
+  const labelEl = document.getElementById('detail-date-label');
+
+  detailEl.style.display = '';
+  labelEl.textContent = formatDate(dateStr);
+
+  const schedules = DB.getMemberSchedules(memberId).filter(s => s.date === dateStr);
+  const sessions = DB.getMemberSessions(memberId).filter(s => s.date === dateStr);
+
+  let html = '';
+
+  if (schedules.length > 0) {
+    html += '<div class="section-title">일정</div>';
+    html += schedules.map(s => `
+      <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:${s.status==='completed'?'var(--green-light)':s.status==='cancelled'?'var(--bg)':'var(--primary-light)'};display:flex;align-items:center;justify-content:center;font-size:1.1rem">${s.status==='completed'?'✅':s.status==='cancelled'?'❌':'🏋️'}</div>
+        <div>
+          <div style="font-weight:600;font-size:0.9rem">PT 세션${s.time?' · '+s.time:''}</div>
+          <div style="font-size:0.78rem;color:var(--text-2)">${s.memo||''}</div>
+        </div>
+        ${statusBadge(s.status)}
+      </div>`).join('');
+  }
+
+  if (sessions.length > 0) {
+    html += `<div class="section-title" style="${schedules.length?'margin-top:12px':''}">세션 기록</div>`;
+    html += sessions.map(s => `
+      <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer" onclick="showSessionDetail('${s.id}')">
+        <div class="flex items-center justify-between mb-3">
+          <div style="font-weight:600">💪 운동 ${s.exercises?.length||0}종목</div>
+          <span class="badge ${s.attendance===false?'badge-red':'badge-green'}">${s.attendance===false?'결석':'출석'}</span>
+        </div>
+        ${s.exercises?.length>0?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${s.exercises.map(e=>`<span class="badge badge-purple">${e.name}</span>`).join('')}</div>`:''}
+        ${s.trainerNote?`<div style="font-size:0.8rem;color:var(--text-2);background:#fff;border-radius:6px;padding:8px">📝 ${s.trainerNote}</div>`:''}
+        <div style="font-size:0.75rem;color:var(--primary);margin-top:6px">탭하여 상세보기 →</div>
+      </div>`).join('');
+  }
+
+  if (!schedules.length && !sessions.length) {
+    html = '<div class="empty" style="padding:24px 0"><div class="empty-icon">😴</div><div class="empty-text">이 날은 일정이 없습니다</div></div>';
+  }
+
+  contentEl.innerHTML = html;
+  detailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ===== SESSIONS TAB =====
+function renderSessionsTab() {
+  const month = document.getElementById('session-month-filter').value;
+  let sessions = DB.getMemberSessions(memberId);
+  if (month) sessions = sessions.filter(s => s.date.startsWith(month));
+
+  const el = document.getElementById('sessions-list');
+  if (sessions.length === 0) {
+    el.innerHTML = '<div class="empty" style="padding:48px 0"><div class="empty-icon">💪</div><div class="empty-text">이 기간에 세션 기록이 없습니다</div></div>';
+    return;
+  }
+
+  // Group by week
+  const grouped = {};
+  sessions.forEach(s => {
+    const d = new Date(s.date + 'T00:00:00');
+    const weekStart = new Date(d);
+    weekStart.setDate(d.getDate() - d.getDay());
+    const key = weekStart.toISOString().split('T')[0];
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(s);
+  });
+
+  el.innerHTML = Object.entries(grouped).sort((a,b) => b[0].localeCompare(a[0])).map(([weekStart, weekSessions]) => {
+    const weekEnd = new Date(weekStart + 'T00:00:00');
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    return `
+      <div style="margin-bottom:20px">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--text-2);margin-bottom:8px;padding:0 4px">${new Date(weekStart+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric'})} ~ ${weekEnd.toLocaleDateString('ko-KR',{month:'long',day:'numeric'})}</div>
+        ${weekSessions.map(s => `
+          <div class="session-card mb-3" onclick="showSessionDetail('${s.id}')" style="cursor:pointer">
+            <div class="session-card-header">
+              <div style="flex:1">
+                <div style="font-weight:700;font-size:0.9rem">${formatDate(s.date)}</div>
+                <div style="font-size:0.78rem;color:var(--text-2)">${s.startTime||''} ${s.exercises?.length||0}종목</div>
+              </div>
+              <span class="badge ${s.attendance===false?'badge-red':'badge-green'}">${s.attendance===false?'결석':'출석'}</span>
+            </div>
+            <div class="session-card-body">
+              ${s.exercises?.length>0?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">${s.exercises.map(e=>`<span class="badge badge-purple">${e.name} ${e.sets?.length||0}세트</span>`).join('')}</div>`:''}
+              ${s.trainerNote?`<div style="font-size:0.82rem;color:var(--text-2);background:var(--primary-light);border-radius:6px;padding:8px;border-left:3px solid var(--primary)">
+                <div style="font-size:0.7rem;font-weight:700;color:var(--primary);margin-bottom:2px">트레이너 피드백</div>
+                ${s.trainerNote}
+              </div>`:''}
+              ${s.nextPlan?`<div style="font-size:0.82rem;color:var(--text-2);background:var(--orange-light);border-radius:6px;padding:8px;border-left:3px solid var(--orange);margin-top:6px">
+                <div style="font-size:0.7rem;font-weight:700;color:var(--orange);margin-bottom:2px">다음 세션</div>
+                ${s.nextPlan}
+              </div>`:''}
+            </div>
+          </div>`).join('')}
+      </div>`;
+  }).join('');
+}
+
+// ===== STATS TAB =====
+function renderStatsTab() {
+  // 운동 통계
+  const exStats = DB.getExerciseStats(memberId);
+  const exEl = document.getElementById('exercise-stats-body');
+  if (exStats.length === 0) {
+    exEl.innerHTML = '<div class="empty" style="padding:20px 0"><div class="empty-text">세션 기록이 없습니다</div></div>';
+  } else {
+    exEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
+      ${exStats.slice(0,8).map(e => `
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:90px;font-size:0.85rem;font-weight:600;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div>
+          <div style="flex:1">
+            <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,e.count*20)}%"></div></div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            ${e.maxWeight>0?`<span class="badge badge-orange">${e.maxWeight}kg</span>`:''}
+            <span class="badge badge-gray" style="margin-left:4px">${e.count}회</span>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  // PT 현황
+  const pt = DB.getPtRemaining(memberId);
+  const ptEl = document.getElementById('pt-status-body');
+  if (!pt) {
+    ptEl.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:12px">등록된 PT 패키지가 없습니다</div>';
+  } else {
+    const color = pt.remaining <= 3 ? 'var(--yellow)' : 'var(--green)';
+    ptEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="text-align:center">
+          <div style="font-size:2rem;font-weight:800;color:${color}">${pt.remaining}</div>
+          <div style="font-size:0.75rem;color:var(--text-2)">잔여 횟수</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:0.8rem;color:var(--text-2);margin-bottom:6px">${pt.used}회 사용 / ${pt.total}회 패키지</div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(pt.used/pt.total*100)}%;background:${color}"></div></div>
+          ${pt.pkg.expiryDate?`<div style="font-size:0.75rem;color:var(--text-3);margin-top:4px">만료일: ${pt.pkg.expiryDate}</div>`:''}
+        </div>
+      </div>`;
+  }
+
+  // 월별 세션
+  const sessions = DB.getMemberSessions(memberId);
+  const monthly = {};
+  sessions.forEach(s => {
+    const key = s.date.slice(0,7);
+    if (!monthly[key]) monthly[key] = 0;
+    if (s.attendance !== false) monthly[key]++;
+  });
+  const months = Object.entries(monthly).sort((a,b) => a[0].localeCompare(b[0])).slice(-6);
+  const maxVal = Math.max(...months.map(m => m[1]), 1);
+  const monthEl = document.getElementById('monthly-stats-body');
+  if (months.length === 0) {
+    monthEl.innerHTML = '<div class="empty" style="padding:20px 0"><div class="empty-text">데이터가 없습니다</div></div>';
+  } else {
+    monthEl.innerHTML = `<div style="display:flex;align-items:flex-end;gap:8px;height:100px;padding-bottom:20px;position:relative">
+      ${months.map(([m, cnt]) => {
+        const h = Math.round((cnt/maxVal)*80);
+        const label = m.slice(5) + '월';
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--primary)">${cnt}</div>
+          <div style="width:100%;background:var(--primary);border-radius:4px 4px 0 0;height:${h}px;min-height:4px;transition:height 0.3s"></div>
+          <div style="font-size:0.7rem;color:var(--text-2)">${label}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+}
+
+// ===== WEIGHT LOG =====
+function openWeightModal() {
+  document.getElementById('w-date').value = today.toISOString().split('T')[0];
+  document.getElementById('w-weight').value = '';
+  document.getElementById('w-bodyfat').value = '';
+  document.getElementById('w-muscle').value = '';
+  document.getElementById('modal-weight').classList.add('active');
+}
+
+function saveWeightLog() {
+  const weight = parseFloat(document.getElementById('w-weight').value);
+  const date = document.getElementById('w-date').value;
+  if (!weight || !date) { toast('날짜와 몸무게를 입력하세요', 'error'); return; }
+  DB.addWeightLog({
+    memberId, date, weight,
+    bodyFat: parseFloat(document.getElementById('w-bodyfat').value) || null,
+    muscleMass: parseFloat(document.getElementById('w-muscle').value) || null,
+  });
+  document.getElementById('modal-weight').classList.remove('active');
+  toast('체중이 기록되었습니다', 'success');
+  renderWeightLog();
+  renderStats();
+}
+
+function renderWeightLog() {
+  const logs = DB.getMemberWeightLogs(memberId);
+  const chartEl = document.getElementById('weight-chart');
+  const listEl = document.getElementById('weight-log-list');
+
+  if (logs.length === 0) {
+    chartEl.innerHTML = '';
+    listEl.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:20px;font-size:0.85rem">체중 기록이 없습니다</div>';
+    return;
+  }
+
+  // SVG 라인 차트
+  const recent = logs.slice(-12);
+  const weights = recent.map(l => l.weight);
+  const minW = Math.min(...weights) - 1;
+  const maxW = Math.max(...weights) + 1;
+  const W = 600, H = 100;
+  const pts = recent.map((l,i) => {
+    const x = recent.length === 1 ? W/2 : (i / (recent.length-1)) * (W-40) + 20;
+    const y = H - ((l.weight - minW) / (maxW - minW)) * (H-20) - 10;
+    return `${x},${y}`;
+  });
+  chartEl.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:80px">
+    <polyline points="${pts.join(' ')}" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linejoin="round"/>
+    ${recent.map((l,i) => {
+      const [x,y] = pts[i].split(',');
+      return `<circle cx="${x}" cy="${y}" r="4" fill="var(--primary)"/>
+        <text x="${x}" y="${parseFloat(y)-8}" text-anchor="middle" font-size="9" fill="var(--text-2)">${l.weight}</text>`;
+    }).join('')}
+  </svg>`;
+
+  // 목록
+  listEl.innerHTML = [...logs].reverse().slice(0,10).map(l => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="flex-shrink:0;font-size:0.8rem;color:var(--text-2);width:80px">${l.date}</div>
+      <div style="flex:1;font-weight:700">${l.weight}kg</div>
+      ${l.bodyFat?`<span class="badge badge-purple">체지방 ${l.bodyFat}%</span>`:''}
+      ${l.muscleMass?`<span class="badge badge-green">근육 ${l.muscleMass}kg</span>`:''}
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteWeightLog('${l.id}')">🗑</button>
+    </div>`).join('');
+}
+
+function deleteWeightLog(id) {
+  DB.deleteWeightLog(id);
+  toast('삭제되었습니다');
+  renderWeightLog();
+  renderStats();
+}
+
+// ===== PROFILE TAB =====
+function renderProfile() {
+  const m = DB.getMember(memberId);
+  document.getElementById('profile-info').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+      <div style="width:60px;height:60px;border-radius:50%;background:var(--primary-light);color:var(--primary);font-size:1.5rem;font-weight:800;display:flex;align-items:center;justify-content:center">${m.name[0]}</div>
+      <div>
+        <div style="font-size:1.2rem;font-weight:800">${m.name}</div>
+        <div style="font-size:0.8rem;color:var(--text-2)">등록일: ${formatDate(m.joinDate)}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.875rem">
+      <div style="padding:10px;background:var(--bg);border-radius:8px"><div class="text-muted text-xs mb-1">전화번호</div><strong>${m.phone||'-'}</strong></div>
+      <div style="padding:10px;background:var(--bg);border-radius:8px"><div class="text-muted text-xs mb-1">목표</div><strong>${m.goal||'-'}</strong></div>
+      <div style="padding:10px;background:var(--bg);border-radius:8px"><div class="text-muted text-xs mb-1">성별 / 나이</div><strong>${m.gender||'-'} ${m.age?m.age+'세':''}</strong></div>
+      <div style="padding:10px;background:var(--bg);border-radius:8px"><div class="text-muted text-xs mb-1">키 / 몸무게</div><strong>${m.height?m.height+'cm':'-'} / ${m.weight?m.weight+'kg':'-'}</strong></div>
+    </div>
+    ${m.memo?`<div style="margin-top:12px;padding:12px;background:var(--yellow-light);border-radius:8px;font-size:0.85rem;color:var(--text)"><div class="text-muted text-xs mb-1">트레이너 메모</div>${m.memo}</div>`:''}
+  `;
+}
+
+// ===== SESSION DETAIL MODAL =====
+function showSessionDetail(id) {
+  const s = DB.getSession(id);
+  if (!s) return;
+  document.getElementById('session-modal-title').textContent = formatDate(s.date);
+  document.getElementById('session-modal-body').innerHTML = `
+    <div class="flex gap-2 flex-wrap mb-3">
+      <span class="badge ${s.attendance===false?'badge-red':'badge-green'}">${s.attendance===false?'결석':'출석'}</span>
+      ${s.startTime?`<span class="badge badge-gray">${s.startTime}</span>`:''}
+      <span class="badge badge-purple">운동 ${s.exercises?.length||0}종목</span>
+    </div>
+    ${(s.exercises||[]).map(e => `
+      <div class="exercise-item">
+        <div class="exercise-name">💪 ${e.name}</div>
+        <table class="sets-table">
+          <thead><tr><th>세트</th><th>횟수</th><th>${e.unit==='time'?'시간(초)':'무게(kg)'}</th></tr></thead>
+          <tbody>${(e.sets||[]).map(set=>`<tr><td>${set.set}세트</td><td>${set.reps}회</td><td>${set.weight}${e.unit==='time'?'초':'kg'}</td></tr>`).join('')}</tbody>
+        </table>
+        ${e.note?`<div style="margin-top:6px;font-size:0.78rem;color:var(--text-2)">📝 ${e.note}</div>`:''}
+      </div>`).join('')}
+    ${s.trainerNote?`<div style="background:var(--primary-light);border-radius:8px;padding:14px;margin-top:8px">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--primary);margin-bottom:6px">트레이너 피드백</div>
+      <div style="font-size:0.875rem">${s.trainerNote}</div>
+    </div>`:''}
+    ${s.nextPlan?`<div style="background:var(--orange-light);border-radius:8px;padding:14px;margin-top:8px">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--orange);margin-bottom:6px">다음 세션 계획</div>
+      <div style="font-size:0.875rem">${s.nextPlan}</div>
+    </div>`:''}
+  `;
+  document.getElementById('modal-session').classList.add('active');
+}
+
+// ===== UTILS =====
+function statusBadge(status) {
+  const map = { scheduled: ['badge-purple','예정'], completed: ['badge-green','완료'], cancelled: ['badge-gray','취소'] };
+  const [cls, text] = map[status] || ['badge-gray', status];
+  return `<span class="badge ${cls}">${text}</span>`;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
+}
+
+function changePw() {
+  const cur = document.getElementById('cur-pw').value;
+  const nw = document.getElementById('new-pw').value;
+  const nw2 = document.getElementById('new-pw2').value;
+  const m = DB.getMember(memberId);
+  if (cur !== m.password) { toast('현재 비밀번호가 틀렸습니다', 'error'); return; }
+  if (!nw) { toast('새 비밀번호를 입력하세요', 'error'); return; }
+  if (nw !== nw2) { toast('비밀번호가 일치하지 않습니다', 'error'); return; }
+  DB.updateMember(memberId, { password: nw });
+  toast('비밀번호가 변경되었습니다', 'success');
+  ['cur-pw','new-pw','new-pw2'].forEach(id => document.getElementById(id).value = '');
+}
+
+function closeModal() { document.getElementById('modal-session').classList.remove('active'); }
+function logout() { DB.logout(); location.href = 'index.html'; }
+
+function toast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = 'toast-item ' + type;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+document.getElementById('modal-session').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-session')) closeModal();
+});
+</script>
+</body>
+</html>

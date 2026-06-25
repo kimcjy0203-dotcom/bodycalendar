@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 - 바디캘린더</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="admin-layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🏋️</div>
+      <div class="sidebar-logo-title">바디캘린더</div>
+      <div class="sidebar-logo-sub">트레이너 관리 시스템</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">메인</div>
+      <div class="sidebar-item active" onclick="showPanel('dashboard')">
+        <span class="sidebar-item-icon">📊</span> 대시보드
+      </div>
+      <div class="sidebar-item" onclick="showPanel('calendar')">
+        <span class="sidebar-item-icon">📅</span> 캘린더
+      </div>
+      <div class="sidebar-section">관리</div>
+      <div class="sidebar-item" onclick="showPanel('members')">
+        <span class="sidebar-item-icon">👥</span> 회원 관리
+      </div>
+      <div class="sidebar-item" onclick="showPanel('sessions')">
+        <span class="sidebar-item-icon">💪</span> 세션 기록
+      </div>
+      <div class="sidebar-item" onclick="showPanel('schedule')">
+        <span class="sidebar-item-icon">🗓️</span> 일정 등록
+      </div>
+      <div class="sidebar-item" onclick="showPanel('attendance')">
+        <span class="sidebar-item-icon">✅</span> 출석 관리
+      </div>
+      <div class="sidebar-item" onclick="showPanel('pt')">
+        <span class="sidebar-item-icon">🎟️</span> PT 횟수 관리
+      </div>
+      <div class="sidebar-item" onclick="showPanel('routines')">
+        <span class="sidebar-item-icon">📋</span> 루틴 템플릿
+      </div>
+      <div class="sidebar-item" onclick="showPanel('notices')">
+        <span class="sidebar-item-icon">📢</span> 공지사항
+      </div>
+      <div class="sidebar-section">설정</div>
+      <div class="sidebar-item" onclick="showPanel('settings')">
+        <span class="sidebar-item-icon">⚙️</span> 설정
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-item" onclick="logout()">
+        <span class="sidebar-item-icon">🚪</span> 로그아웃
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="admin-content">
+    <header class="admin-topbar">
+      <div class="flex items-center gap-3">
+        <button class="btn btn-ghost btn-icon" onclick="toggleSidebar()" style="display:none" id="menu-btn">☰</button>
+        <div class="topbar-title" id="topbar-title">대시보드</div>
+      </div>
+      <div class="topbar-right">
+        <span class="text-sm text-muted" id="today-date"></span>
+        <button class="btn btn-primary btn-sm" onclick="showPanel('sessions');openSessionModal()">+ 세션 기록</button>
+      </div>
+    </header>
+
+    <main class="admin-main">
+
+      <!-- ===== DASHBOARD ===== -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon" style="background:var(--primary-light)">👥</div>
+            <div class="stat-label">전체 회원</div>
+            <div class="stat-value" id="stat-total-members">0</div>
+            <div class="stat-sub">명</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:var(--orange-light)">📅</div>
+            <div class="stat-label">오늘 일정</div>
+            <div class="stat-value" id="stat-today-count">0</div>
+            <div class="stat-sub">건</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:var(--green-light)">💪</div>
+            <div class="stat-label">이번 달 세션</div>
+            <div class="stat-value" id="stat-month-sessions">0</div>
+            <div class="stat-sub">회</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:var(--yellow-light)">📈</div>
+            <div class="stat-label">전체 세션</div>
+            <div class="stat-value" id="stat-total-sessions">0</div>
+            <div class="stat-sub">회</div>
+          </div>
+        </div>
+
+        <div class="content-grid">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">오늘의 일정</span>
+              <span class="text-sm text-muted" id="today-label"></span>
+            </div>
+            <div class="card-body" id="today-schedule-list" style="min-height:120px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">최근 세션 기록</span>
+            </div>
+            <div class="card-body" id="recent-sessions-list" style="min-height:120px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">회원 현황</span>
+              <button class="btn btn-primary btn-sm" onclick="showPanel('members');openAddMemberModal()">+ 추가</button>
+            </div>
+            <div class="card-body" id="member-summary-list" style="min-height:120px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">이번 주 출석</span>
+            </div>
+            <div class="card-body" id="week-attendance" style="min-height:120px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== CALENDAR ===== -->
+      <div class="panel" id="panel-calendar">
+        <div class="content-grid" style="grid-template-columns: 1fr 340px">
+          <div class="card">
+            <div class="card-header">
+              <div class="cal-nav">
+                <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
+                <span class="cal-month" id="cal-month-label"></span>
+                <button class="cal-nav-btn" onclick="calNav(1)">›</button>
+              </div>
+              <div class="flex gap-2">
+                <select class="select" id="cal-filter-member" style="width:130px" onchange="renderCalendar()">
+                  <option value="">전체 회원</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onclick="openScheduleModal()">+ 일정 추가</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="calendar-wrap">
+                <div class="cal-grid">
+                  <div class="cal-day-label">일</div>
+                  <div class="cal-day-label">월</div>
+                  <div class="cal-day-label">화</div>
+                  <div class="cal-day-label">수</div>
+                  <div class="cal-day-label">목</div>
+                  <div class="cal-day-label">금</div>
+                  <div class="cal-day-label">토</div>
+                </div>
+                <div class="cal-grid" id="cal-body" style="margin-top:1px"></div>
+              </div>
+              <div class="flex gap-3 mt-2" style="font-size:0.75rem;color:var(--text-2)">
+                <span>● <span style="color:var(--primary)">예정</span></span>
+                <span>● <span style="color:var(--green)">완료</span></span>
+                <span>● <span style="color:var(--text-3)">취소</span></span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="cal-detail-date">날짜를 선택하세요</span>
+            </div>
+            <div class="card-body" id="cal-detail-body" style="min-height:200px">
+              <div class="empty"><div class="empty-icon">📅</div><div class="empty-text">날짜를 클릭하면<br>일정을 확인할 수 있어요</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MEMBERS ===== -->
+      <div class="panel" id="panel-members">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 style="font-size:1.1rem;font-weight:700">회원 관리</h2>
+            <p class="text-sm text-muted mt-2" id="member-count-label">전체 0명</p>
+          </div>
+          <button class="btn btn-primary" onclick="openAddMemberModal()">+ 회원 추가</button>
+        </div>
+        <div class="member-card-grid" id="member-grid"></div>
+      </div>
+
+      <!-- ===== MEMBER DETAIL (sub-panel) ===== -->
+      <div class="panel" id="panel-member-detail">
+        <div class="flex items-center gap-3 mb-4">
+          <button class="btn btn-ghost btn-sm" onclick="showPanel('members')">← 목록으로</button>
+          <h2 style="font-size:1.1rem;font-weight:700" id="member-detail-name"></h2>
+        </div>
+        <div class="content-grid">
+          <div>
+            <div class="card mb-4">
+              <div class="card-header">
+                <span class="card-title">기본 정보</span>
+                <button class="btn btn-ghost btn-sm" id="edit-member-btn" onclick="">수정</button>
+              </div>
+              <div class="card-body" id="member-detail-info"></div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">통계</span>
+              </div>
+              <div class="card-body" id="member-detail-stats"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">세션 이력</span>
+              <button class="btn btn-primary btn-sm" onclick="openSessionModalForMember()">+ 세션 기록</button>
+            </div>
+            <div class="card-body" id="member-detail-sessions" style="min-height:200px;max-height:500px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SESSIONS ===== -->
+      <div class="panel" id="panel-sessions">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 style="font-size:1.1rem;font-weight:700">세션 기록</h2>
+            <p class="text-sm text-muted mt-2">운동 내용, 무게, 피드백을 기록합니다</p>
+          </div>
+          <button class="btn btn-primary" onclick="openSessionModal()">+ 세션 기록 추가</button>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="flex gap-2 flex-wrap">
+              <select class="select" id="session-filter-member" style="width:140px" onchange="renderSessionsPanel()">
+                <option value="">전체 회원</option>
+              </select>
+              <input class="input" type="month" id="session-filter-month" style="width:150px" onchange="renderSessionsPanel()">
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>회원</th>
+                  <th>운동 수</th>
+                  <th>출석</th>
+                  <th>트레이너 메모</th>
+                  <th>액션</th>
+                </tr>
+              </thead>
+              <tbody id="sessions-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SCHEDULE ===== -->
+      <div class="panel" id="panel-schedule">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 style="font-size:1.1rem;font-weight:700">일정 등록</h2>
+            <p class="text-sm text-muted mt-2">회원별 PT 날짜와 시간을 등록합니다</p>
+          </div>
+          <button class="btn btn-primary" onclick="openScheduleModal()">+ 일정 추가</button>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="flex gap-2 flex-wrap">
+              <select class="select" id="sch-filter-member" style="width:140px" onchange="renderSchedulePanel()">
+                <option value="">전체 회원</option>
+              </select>
+              <input class="input" type="month" id="sch-filter-month" style="width:150px" onchange="renderSchedulePanel()">
+              <select class="select" id="sch-filter-status" style="width:120px" onchange="renderSchedulePanel()">
+                <option value="">전체 상태</option>
+                <option value="scheduled">예정</option>
+                <option value="completed">완료</option>
+                <option value="cancelled">취소</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>시간</th>
+                  <th>회원</th>
+                  <th>상태</th>
+                  <th>메모</th>
+                  <th>액션</th>
+                </tr>
+              </thead>
+              <tbody id="schedule-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ATTENDANCE ===== -->
+      <div class="panel" id="panel-attendance">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 style="font-size:1.1rem;font-weight:700">출석 관리</h2>
+          </div>
+          <input class="input" type="month" id="att-month" style="width:150px" onchange="renderAttendance()">
+        </div>
+        <div id="attendance-content"></div>
+      </div>
+
+      <!-- ===== PT 횟수 관리 ===== -->
+      <div class="panel" id="panel-pt">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 style="font-size:1.1rem;font-weight:700">PT 횟수 관리</h2>
+            <p class="text-sm text-muted mt-2">회원별 PT 패키지를 등록하고 잔여 횟수를 확인합니다</p>
+          </div>
+          <button class="btn btn-primary" onclick="openPtModal()">+ 패키지 추가</button>
+        </div>
+        <div id="pt-alert-area" style="margin-bottom:16px"></div>
+        <div id="pt-member-grid" class="member-card-grid"></div>
+      </div>
+
+      <!-- ===== 루틴 템플릿 ===== -->
+      <div class="panel" id="panel-routines">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 style="font-size:1.1rem;font-weight:700">루틴 템플릿</h2>
+            <p class="text-sm text-muted mt-2">자주 쓰는 운동 세트를 저장하고 세션 기록 시 불러옵니다</p>
+          </div>
+          <button class="btn btn-primary" onclick="openRoutineModal()">+ 루틴 추가</button>
+        </div>
+        <div id="routine-grid" class="member-card-grid"></div>
+      </div>
+
+      <!-- ===== 공지사항 ===== -->
+      <div class="panel" id="panel-notices">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 style="font-size:1.1rem;font-weight:700">공지사항</h2>
+            <p class="text-sm text-muted mt-2">회원 페이지에 표시될 공지를 작성합니다</p>
+          </div>
+          <button class="btn btn-primary" onclick="openNoticeModal()">+ 공지 작성</button>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>날짜</th><th>제목</th><th>내용</th><th>고정</th><th>액션</th></tr>
+              </thead>
+              <tbody id="notices-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SETTINGS ===== -->
+      <div class="panel" id="panel-settings">
+        <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:20px">설정</h2>
+        <div style="display:flex;flex-direction:column;gap:16px;max-width:520px">
+
+          <!-- 회원 로그인 링크 -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">🔗 회원 로그인 링크</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+              <p class="text-sm text-muted">아래 링크를 회원에게 공유하세요. 회원은 이 페이지에서 로그인하고 비밀번호도 재설정할 수 있습니다.</p>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input class="input" type="text" id="member-link-input" readonly style="background:var(--bg);font-size:0.8rem;color:var(--text-2)">
+                <button class="btn btn-primary" onclick="copyMemberLink()" style="white-space:nowrap">복사</button>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="window.open(document.getElementById('member-link-input').value,'_blank')" style="align-self:flex-start">미리보기 →</button>
+            </div>
+          </div>
+
+          <!-- 데이터 백업/복원 -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">💾 데이터 백업 / 복원</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+              <p class="text-sm text-muted">전체 데이터를 JSON 파일로 저장하거나 복원합니다.</p>
+              <div class="flex gap-2">
+                <button class="btn btn-green" onclick="exportBackup()">📥 백업 다운로드</button>
+                <button class="btn btn-ghost" onclick="document.getElementById('restore-file').click()">📤 백업 불러오기</button>
+                <input type="file" id="restore-file" accept=".json" style="display:none" onchange="importBackup(this)">
+              </div>
+            </div>
+          </div>
+
+          <!-- CSV 내보내기 -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">📊 세션 기록 CSV 내보내기</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+              <p class="text-sm text-muted">세션 기록을 엑셀에서 열 수 있는 CSV 파일로 내보냅니다.</p>
+              <div class="flex gap-2 flex-wrap">
+                <select class="select" id="csv-member" style="width:150px">
+                  <option value="">전체 회원</option>
+                </select>
+                <button class="btn btn-primary" onclick="exportCsv()">CSV 다운로드</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 관리자 비밀번호 -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">관리자 비밀번호 변경</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+              <div class="input-group">
+                <label>현재 비밀번호</label>
+                <input class="input" type="password" id="cur-pw" placeholder="현재 비밀번호">
+              </div>
+              <div class="input-group">
+                <label>새 비밀번호</label>
+                <input class="input" type="password" id="new-pw" placeholder="새 비밀번호">
+              </div>
+              <div class="input-group">
+                <label>새 비밀번호 확인</label>
+                <input class="input" type="password" id="new-pw2" placeholder="새 비밀번호 재입력">
+              </div>
+              <button class="btn btn-primary" onclick="changeAdminPw()">비밀번호 변경</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ===== MODAL: ADD MEMBER ===== -->
+<div class="modal-overlay" id="modal-member">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-member-title">회원 추가</span>
+      <button class="close-btn" onclick="closeModal('modal-member')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-member-id">
+      <div class="grid-2">
+        <div class="input-group">
+          <label>이름 *</label>
+          <input class="input" type="text" id="m-name" placeholder="이름">
+        </div>
+        <div class="input-group">
+          <label>전화번호</label>
+          <input class="input" type="tel" id="m-phone" placeholder="010-0000-0000">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="input-group">
+          <label>비밀번호 *</label>
+          <input class="input" type="text" id="m-password" placeholder="회원 앱 로그인용">
+        </div>
+        <div class="input-group">
+          <label>등록일</label>
+          <input class="input" type="date" id="m-joindate">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="input-group">
+          <label>성별</label>
+          <select class="select" id="m-gender">
+            <option value="">선택</option>
+            <option value="남">남</option>
+            <option value="여">여</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>나이</label>
+          <input class="input" type="number" id="m-age" placeholder="나이">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="input-group">
+          <label>키 (cm)</label>
+          <input class="input" type="number" id="m-height" placeholder="키">
+        </div>
+        <div class="input-group">
+          <label>몸무게 (kg)</label>
+          <input class="input" type="number" id="m-weight" placeholder="몸무게">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>운동 목표</label>
+        <select class="select" id="m-goal">
+          <option value="">선택</option>
+          <option value="체중감량">체중감량</option>
+          <option value="근력향상">근력향상</option>
+          <option value="체형교정">체형교정</option>
+          <option value="체력증진">체력증진</option>
+          <option value="재활">재활</option>
+          <option value="기타">기타</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>메모</label>
+        <textarea class="textarea" id="m-memo" placeholder="특이사항, 부상 이력 등"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-member')">취소</button>
+      <button class="btn btn-primary" onclick="saveMember()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: SESSION ===== -->
+<div class="modal-overlay" id="modal-session">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-session-title">세션 기록 추가</span>
+      <button class="close-btn" onclick="closeModal('modal-session')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-session-id">
+      <div class="grid-2">
+        <div class="input-group">
+          <label>회원 *</label>
+          <select class="select" id="s-member"></select>
+        </div>
+        <div class="input-group">
+          <label>날짜 *</label>
+          <input class="input" type="date" id="s-date">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="input-group">
+          <label>시작 시간</label>
+          <input class="input" type="time" id="s-time">
+        </div>
+        <div class="input-group">
+          <label>출석 여부</label>
+          <select class="select" id="s-attendance">
+            <option value="true">출석</option>
+            <option value="false">결석</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="flex items-center justify-between mb-3">
+        <span class="section-title" style="margin-bottom:0">운동 목록</span>
+        <div class="flex gap-2">
+          <button class="btn btn-ghost btn-sm" onclick="openRoutinePicker()">📋 루틴 불러오기</button>
+          <button class="btn btn-primary btn-sm" onclick="addExerciseBlock()">+ 운동 추가</button>
+        </div>
+      </div>
+      <div id="exercises-container" style="display:flex;flex-direction:column;gap:10px"></div>
+
+      <div class="divider"></div>
+
+      <div class="input-group">
+        <label>트레이너 메모</label>
+        <textarea class="textarea" id="s-trainer-note" placeholder="오늘 세션에 대한 피드백, 특이사항 등"></textarea>
+      </div>
+      <div class="input-group">
+        <label>다음 세션 계획</label>
+        <textarea class="textarea" id="s-next-plan" placeholder="다음 세션에 진행할 내용" style="min-height:60px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-session')">취소</button>
+      <button class="btn btn-primary" onclick="saveSession()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: SCHEDULE ===== -->
+<div class="modal-overlay" id="modal-schedule">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-schedule-title">일정 추가</span>
+      <button class="close-btn" onclick="closeModal('modal-schedule')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-schedule-id">
+      <div class="input-group">
+        <label>회원 *</label>
+        <select class="select" id="sch-member"></select>
+      </div>
+      <div class="grid-2">
+        <div class="input-group">
+          <label>날짜 *</label>
+          <input class="input" type="date" id="sch-date">
+        </div>
+        <div class="input-group">
+          <label>시간</label>
+          <input class="input" type="time" id="sch-time">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>상태</label>
+        <select class="select" id="sch-status">
+          <option value="scheduled">예정</option>
+          <option value="completed">완료</option>
+          <option value="cancelled">취소</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>메모</label>
+        <input class="input" type="text" id="sch-memo" placeholder="일정 메모">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-schedule')">취소</button>
+      <button class="btn btn-primary" onclick="saveSchedule()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: SESSION DETAIL ===== -->
+<div class="modal-overlay" id="modal-session-detail">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="session-detail-title">세션 상세</span>
+      <button class="close-btn" onclick="closeModal('modal-session-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="session-detail-body"></div>
+    <div class="modal-footer" id="session-detail-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-session-detail')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: PT PACKAGE ===== -->
+<div class="modal-overlay" id="modal-pt">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-pt-title">PT 패키지 추가</span>
+      <button class="close-btn" onclick="closeModal('modal-pt')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-pt-id">
+      <div class="input-group">
+        <label>회원 *</label>
+        <select class="select" id="pt-member"></select>
+      </div>
+      <div class="grid-2">
+        <div class="input-group">
+          <label>구매 횟수 *</label>
+          <input class="input" type="number" id="pt-total" placeholder="예: 20" min="1">
+        </div>
+        <div class="input-group">
+          <label>구매일</label>
+          <input class="input" type="date" id="pt-purchase-date">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>만료일</label>
+        <input class="input" type="date" id="pt-expiry-date">
+      </div>
+      <div class="input-group">
+        <label>메모</label>
+        <input class="input" type="text" id="pt-note" placeholder="예: 20회 패키지 (3개월)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-pt')">취소</button>
+      <button class="btn btn-primary" onclick="savePtPackage()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: ROUTINE ===== -->
+<div class="modal-overlay" id="modal-routine">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-routine-title">루틴 템플릿 추가</span>
+      <button class="close-btn" onclick="closeModal('modal-routine')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-routine-id">
+      <div class="grid-2">
+        <div class="input-group">
+          <label>루틴 이름 *</label>
+          <input class="input" type="text" id="r-name" placeholder="예: 하체 기본 루틴">
+        </div>
+        <div class="input-group">
+          <label>분류</label>
+          <select class="select" id="r-category">
+            <option value="">선택</option>
+            <option value="하체">하체</option>
+            <option value="상체">상체</option>
+            <option value="가슴">가슴</option>
+            <option value="등">등</option>
+            <option value="어깨">어깨</option>
+            <option value="팔">팔</option>
+            <option value="복부">복부</option>
+            <option value="코어">코어</option>
+            <option value="기능성">기능성</option>
+            <option value="전신">전신</option>
+            <option value="유산소">유산소</option>
+          </select>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>설명</label>
+        <input class="input" type="text" id="r-desc" placeholder="루틴 설명">
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- 종목 라이브러리 -->
+      <div class="section-title" style="margin-bottom:8px">종목 선택</div>
+      <input class="input" type="text" id="ex-lib-search" placeholder="🔍 종목 검색..." oninput="filterExLibrary()" style="margin-bottom:8px">
+      <div id="ex-lib-cats" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"></div>
+      <div id="ex-lib-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;max-height:160px;overflow-y:auto;padding:2px"></div>
+      <div class="flex items-center justify-between mt-2">
+        <span id="ex-lib-selected-count" style="font-size:0.78rem;color:var(--text-2)">0개 선택됨</span>
+        <button class="btn btn-primary btn-sm" onclick="addCheckedExercises()">선택 추가 →</button>
+      </div>
+
+      <div class="divider" style="margin-top:12px"></div>
+
+      <div class="flex items-center justify-between mb-3">
+        <span class="section-title" style="margin-bottom:0">추가된 운동 <span id="routine-ex-count" style="color:var(--primary)">0</span>개</span>
+        <button class="btn btn-ghost btn-sm" onclick="addRoutineExercise()">+ 직접 입력</button>
+      </div>
+      <div id="routine-exercises-container" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-routine')">취소</button>
+      <button class="btn btn-primary" onclick="saveRoutine()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: ROUTINE PICKER ===== -->
+<div class="modal-overlay" id="modal-routine-picker">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">루틴 불러오기</span>
+      <button class="close-btn" onclick="closeModal('modal-routine-picker')">✕</button>
+    </div>
+    <div class="modal-body" id="routine-picker-list" style="gap:8px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-routine-picker')">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: NOTICE ===== -->
+<div class="modal-overlay" id="modal-notice">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-notice-title">공지 작성</span>
+      <button class="close-btn" onclick="closeModal('modal-notice')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-notice-id">
+      <div class="input-group">
+        <label>제목 *</label>
+        <input class="input" type="text" id="n-title" placeholder="공지 제목">
+      </div>
+      <div class="input-group">
+        <label>내용 *</label>
+        <textarea class="textarea" id="n-content" placeholder="공지 내용" style="min-height:120px"></textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="n-pinned" style="width:16px;height:16px">
+        <label for="n-pinned" style="font-size:0.875rem;cursor:pointer">상단 고정 (회원 페이지 최상단에 표시)</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-notice')">취소</button>
+      <button class="btn btn-primary" onclick="saveNotice()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/db.js"></script>
+<script>
+// Auth check
+if (DB.getRole() !== 'admin') { location.href = 'index.html'; }
+
+DB.init();
+
+const today = new Date();
+let calYear = today.getFullYear(), calMonth = today.getMonth() + 1;
+let selectedCalDate = null;
+let detailMemberId = null;
+
+// ===== EXERCISE DATABASE =====
+const EXERCISE_DB = {
+  '하체': ['스쿼트','프론트 스쿼트','고블릿 스쿼트','수모 스쿼트','핵 스쿼트','씨씨 스쿼트','스미스 스쿼트','박스 스쿼트','레그프레스','핵 레그프레스','레그컬','레그익스텐션','루마니안 데드리프트','싱글레그 데드리프트','힙쓰러스트','바벨 힙쓰러스트','글루트 브릿지','런지','리버스 런지','워킹 런지','불가리안 스플릿 스쿼트','스텝업','박스 점프','카프레이즈','시티드 카프레이즈','레그 어브덕션','레그 어덕션','힙 어브덕션 머신','힙 어덕션 머신','글루트 킥백','사이드 런지','월 스쿼트','래터럴 밴드 워크'],
+  '가슴': ['벤치프레스','인클라인 벤치프레스','디클라인 벤치프레스','클로즈그립 벤치프레스','덤벨 벤치프레스','인클라인 덤벨 프레스','덤벨 플라이','인클라인 덤벨 플라이','케이블 크로스오버','로우 케이블 플라이','하이 케이블 플라이','체스트 프레스 머신','펙덱 플라이','딥스','푸시업','와이드 푸시업','인클라인 푸시업','덤벨 풀오버'],
+  '등': ['데드리프트','루마니안 데드리프트','풀업','친업','클로즈그립 풀업','랫풀다운','클로즈그립 랫풀다운','리버스 그립 랫풀다운','시티드 케이블 로우','클로즈그립 로우','바벨 로우','언더그립 바벨 로우','원암 덤벨 로우','티바 로우','케이블 페이스풀','페이스풀','리버스 플라이','슈러그','굿모닝','백 익스텐션','하이퍼익스텐션','덤벨 풀오버'],
+  '어깨': ['오버헤드 바벨 프레스','덤벨 숄더프레스','아놀드 프레스','머신 숄더프레스','스미스 숄더프레스','사이드 레터럴 레이즈','케이블 레터럴 레이즈','밴드 레터럴 레이즈','프론트 레이즈','케이블 프론트 레이즈','리어 델트 플라이','케이블 리어 델트','페이스풀','밴드 페이스풀','업라이트 로우','케이블 업라이트 로우'],
+  '팔': ['바벨 컬','덤벨 컬','해머 컬','인클라인 덤벨 컬','프리처 컬','케이블 컬','리버스 컬','밴드 컬','21s 컬','컨센트레이션 컬','트라이셉스 푸시다운','V바 푸시다운','로프 푸시다운','오버헤드 트라이셉스 익스텐션','스컬크러셔','클로즈그립 벤치프레스','킥백','케이블 킥백'],
+  '복부': ['플랭크','사이드 플랭크','크런치','리버스 크런치','바이시클 크런치','레그레이즈','행잉 레그레이즈','힐터치','토터치','싯업','V업','러시안 트위스트','케이블 크런치','드래곤 플래그','에브 휠 롤아웃','풍차'],
+  '코어': ['데드버그','버드독','마운틴 클라이머','슈퍼맨','글루트 브릿지 싱글','팔로프 프레스','케이블 우드찹','롤아웃','터키시 겟업','TRX 파이크','스위스볼 플랭크','할로우 바디홀드','L싯','베어 크롤','코펜하겐 플랭크'],
+  '기능성': ['케틀벨 스윙','케틀벨 클린','케틀벨 스내치','케틀벨 고블릿 스쿼트','파워 클린','클린 앤 저크','스내치','배틀로프','메디신볼 슬램','메디신볼 로테이션','파머스워크','슬레드 푸시','슬레드 풀','타이어 플립','버피','점프 스쿼트','박스 점프','래터럴 점프','TRX 로우','TRX 체스트프레스','밴드 몬스터워크'],
+  '유산소': ['트레드밀','인클라인 트레드밀','싸이클','에어바이크','로잉머신','스텝밀','일립티컬','스키에르그','줄넘기','스피닝','계단오르기','배틀로프 인터벌'],
+  '스트레칭': ['폼롤러 허벅지','폼롤러 종아리','폼롤러 등','폼롤러 IT밴드','고관절 굴곡근 스트레칭','햄스트링 스트레칭','사두근 스트레칭','흉추 스트레칭','어깨 스트레칭','가슴 스트레칭','고양이 낙타 자세','차일드 포즈','피전 포즈','라잉 글루트 스트레칭','월 스트레칭']
+};
+
+// ===== INIT =====
+document.getElementById('today-date').textContent = formatDate(today.toISOString().split('T')[0]);
+document.getElementById('today-label').textContent = today.toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'});
+document.getElementById('s-date').value = today.toISOString().split('T')[0];
+document.getElementById('sch-date').value = today.toISOString().split('T')[0];
+document.getElementById('m-joindate').value = today.toISOString().split('T')[0];
+
+const now = today.toISOString().slice(0,7);
+document.getElementById('session-filter-month').value = now;
+document.getElementById('sch-filter-month').value = now;
+document.getElementById('att-month').value = now;
+
+renderAll();
+
+// ===== PANEL =====
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  const titles = {dashboard:'대시보드',calendar:'캘린더',members:'회원 관리',sessions:'세션 기록',schedule:'일정 등록',attendance:'출석 관리',settings:'설정','member-detail':'회원 상세'};
+  document.getElementById('topbar-title').textContent = titles[name] || '';
+  const navMap = {dashboard:0,calendar:1,members:2,sessions:3,schedule:4,attendance:5,settings:6};
+  const items = document.querySelectorAll('.sidebar-item');
+  if (navMap[name] !== undefined) items[navMap[name]].classList.add('active');
+
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'calendar') { populateMemberSelects(); renderCalendar(); }
+  if (name === 'members') renderMembers();
+  if (name === 'sessions') { populateMemberSelects(); renderSessionsPanel(); }
+  if (name === 'schedule') { populateMemberSelects(); renderSchedulePanel(); }
+  if (name === 'attendance') renderAttendance();
+  if (name === 'settings') {
+    const linkEl = document.getElementById('member-link-input');
+    if (linkEl) linkEl.value = location.href.replace('admin.html', 'member-login.html');
+    populateMemberSelects();
+  }
+  if (name === 'pt') renderPtPanel();
+  if (name === 'routines') renderRoutinesPanel();
+  if (name === 'notices') renderNoticesPanel();
+}
+
+function renderAll() {
+  renderDashboard();
+  populateMemberSelects();
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const members = DB.getMembers();
+  const sessions = DB.getSessions();
+  const todayStr = today.toISOString().split('T')[0];
+  const todaySchedules = DB.getDateSchedules(todayStr);
+  const monthSessions = DB.getMonthSessions(today.getFullYear(), today.getMonth()+1);
+
+  // PT 소진 임박 알림
+  const ptAlerts = members.map(m => {
+    const pt = DB.getPtRemaining(m.id);
+    if (pt && pt.remaining <= 3 && pt.remaining >= 0) return { name: m.name, remaining: pt.remaining };
+    return null;
+  }).filter(Boolean);
+  const alertArea = document.getElementById('pt-alert-area');
+  if (alertArea) {
+    if (ptAlerts.length > 0) {
+      alertArea.innerHTML = `<div style="background:var(--yellow-light);border:1.5px solid var(--yellow);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px"><span style="font-size:1.2rem">⚠️</span><div><strong>PT 횟수 소진 임박</strong> · ${ptAlerts.map(a=>`${a.name} (${a.remaining}회 남음)`).join(', ')}</div></div>`;
+    } else alertArea.innerHTML = '';
+  }
+
+  document.getElementById('stat-total-members').textContent = members.length;
+  document.getElementById('stat-today-count').textContent = todaySchedules.length;
+  document.getElementById('stat-month-sessions').textContent = monthSessions.length;
+  document.getElementById('stat-total-sessions').textContent = sessions.length;
+
+  // Today schedule
+  const todayList = document.getElementById('today-schedule-list');
+  if (todaySchedules.length === 0) {
+    todayList.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">오늘 일정이 없습니다</div></div>';
+  } else {
+    todayList.innerHTML = todaySchedules.map(s => {
+      const m = DB.getMember(s.memberId);
+      return `<div class="recent-item" onclick="openScheduleDetailModal('${s.id}')">
+        <div class="avatar">${(m?.name||'?')[0]}</div>
+        <div class="recent-item-info">
+          <div class="recent-item-title">${m?.name||'알 수 없음'}</div>
+          <div class="recent-item-sub">${s.time||'시간 미정'}</div>
+        </div>
+        ${statusBadge(s.status)}
+      </div>`;
+    }).join('');
+  }
+
+  // Recent sessions
+  const recentList = document.getElementById('recent-sessions-list');
+  const recent = sessions.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  if (recent.length === 0) {
+    recentList.innerHTML = '<div class="empty"><div class="empty-icon">💪</div><div class="empty-text">기록된 세션이 없습니다</div></div>';
+  } else {
+    recentList.innerHTML = recent.map(s => {
+      const m = DB.getMember(s.memberId);
+      return `<div class="recent-item" onclick="showSessionDetail('${s.id}')">
+        <div class="avatar">${(m?.name||'?')[0]}</div>
+        <div class="recent-item-info">
+          <div class="recent-item-title">${m?.name||'알 수 없음'}</div>
+          <div class="recent-item-sub">${formatDate(s.date)} · 운동 ${s.exercises?.length||0}개</div>
+        </div>
+        <span class="badge ${s.attendance===false?'badge-red':'badge-green'}">${s.attendance===false?'결석':'출석'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Member summary
+  const mList = document.getElementById('member-summary-list');
+  if (members.length === 0) {
+    mList.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">회원이 없습니다</div></div>';
+  } else {
+    mList.innerHTML = members.map(m => {
+      const stats = DB.getMemberStats(m.id);
+      return `<div class="recent-item" onclick="showMemberDetail('${m.id}')">
+        <div class="avatar">${m.name[0]}</div>
+        <div class="recent-item-info">
+          <div class="recent-item-title">${m.name}</div>
+          <div class="recent-item-sub">총 ${stats.total}회 · 이번달 ${stats.thisMonth}회</div>
+        </div>
+        <span class="badge badge-purple">출석률 ${stats.attendance}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Week attendance
+  const weekEl = document.getElementById('week-attendance');
+  const weekDays = [];
+  for (let i=6; i>=0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate()-i);
+    weekDays.push(d.toISOString().split('T')[0]);
+  }
+  weekEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center">
+    ${weekDays.map(d => {
+      const daySessions = DB.getDateSessions(d);
+      const dayLabel = new Date(d).toLocaleDateString('ko-KR', {weekday:'short'});
+      const dayNum = new Date(d).getDate();
+      const isToday = d === todayStr;
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="font-size:0.7rem;color:var(--text-2)">${dayLabel}</div>
+        <div style="width:32px;height:32px;border-radius:50%;background:${isToday?'var(--primary)':daySessions.length>0?'var(--green-light)':'var(--bg)'};color:${isToday?'#fff':daySessions.length>0?'var(--green)':'var(--text-3)'};display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700">${dayNum}</div>
+        <div style="font-size:0.7rem;color:var(--text-3)">${daySessions.length>0?daySessions.length+'회':''}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ===== CALENDAR =====
+function calNav(dir) {
+  calMonth += dir;
+  if (calMonth > 12) { calMonth = 1; calYear++; }
+  if (calMonth < 1) { calMonth = 12; calYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('cal-month-label').textContent = `${calYear}년 ${calMonth}월`;
+  const filterMember = document.getElementById('cal-filter-member')?.value || '';
+  const schedules = DB.getMonthSchedules(calYear, calMonth);
+  const sessions = DB.getMonthSessions(calYear, calMonth);
+
+  const firstDay = new Date(calYear, calMonth-1, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+  const prevDays = new Date(calYear, calMonth-1, 0).getDate();
+  const todayStr = today.toISOString().split('T')[0];
+
+  let cells = '';
+  let totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+  for (let i = 0; i < totalCells; i++) {
+    let day, dateStr, isOther = false;
+    if (i < firstDay) { day = prevDays - firstDay + i + 1; const d = new Date(calYear, calMonth-2, day); dateStr = d.toISOString().split('T')[0]; isOther = true; }
+    else if (i >= firstDay + daysInMonth) { day = i - firstDay - daysInMonth + 1; const d = new Date(calYear, calMonth, day); dateStr = d.toISOString().split('T')[0]; isOther = true; }
+    else { day = i - firstDay + 1; dateStr = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`; }
+
+    const daySchedules = schedules.filter(s => s.date === dateStr && (!filterMember || s.memberId === filterMember));
+    const daySessions = sessions.filter(s => s.date === dateStr && (!filterMember || s.memberId === filterMember));
+    const isToday = dateStr === todayStr;
+    const isSel = dateStr === selectedCalDate;
+
+    cells += `<div class="cal-cell ${isOther?'other-month':''} ${isToday?'today':''} ${isSel?'selected':''}" onclick="selectCalDate('${dateStr}')">
+      <div class="cal-date">${day}</div>
+      ${daySchedules.slice(0,2).map(s => {
+        const m = DB.getMember(s.memberId);
+        return `<div class="cal-event cal-event-${s.status}">${m?.name||''} ${s.time||''}</div>`;
+      }).join('')}
+      ${daySchedules.length > 2 ? `<div style="font-size:0.65rem;color:var(--text-3)">+${daySchedules.length-2}개</div>` : ''}
+      ${daySessions.length > 0 && daySchedules.length === 0 ? `<div class="cal-dots">${daySessions.map(()=>'<div class="cal-dot cal-dot-completed"></div>').join('')}</div>` : ''}
+    </div>`;
+  }
+  document.getElementById('cal-body').innerHTML = cells;
+}
+
+function selectCalDate(dateStr) {
+  selectedCalDate = dateStr;
+  renderCalendar();
+  const label = document.getElementById('cal-detail-date');
+  const body = document.getElementById('cal-detail-body');
+  label.textContent = formatDate(dateStr);
+  const schedules = DB.getDateSchedules(dateStr);
+  const sessions = DB.getDateSessions(dateStr);
+
+  let html = '';
+  if (schedules.length > 0) {
+    html += '<div class="section-title">일정</div>';
+    html += schedules.map(s => {
+      const m = DB.getMember(s.memberId);
+      return `<div class="recent-item">
+        <div class="avatar">${(m?.name||'?')[0]}</div>
+        <div class="recent-item-info"><div class="recent-item-title">${m?.name||'?'}</div><div class="recent-item-sub">${s.time||'시간 미정'}${s.memo?' · '+s.memo:''}</div></div>
+        <div class="flex gap-2">${statusBadge(s.status)}<button class="btn btn-ghost btn-sm btn-icon" onclick="openScheduleEdit('${s.id}')">✏️</button><button class="btn btn-red btn-sm btn-icon" onclick="deleteSchedule('${s.id}')">🗑</button></div>
+      </div>`;
+    }).join('');
+  }
+  if (sessions.length > 0) {
+    html += '<div class="section-title" style="margin-top:12px">세션 기록</div>';
+    html += sessions.map(s => {
+      const m = DB.getMember(s.memberId);
+      return `<div class="recent-item" onclick="showSessionDetail('${s.id}')">
+        <div class="avatar">${(m?.name||'?')[0]}</div>
+        <div class="recent-item-info"><div class="recent-item-title">${m?.name||'?'}</div><div class="recent-item-sub">운동 ${s.exercises?.length||0}개 · ${s.trainerNote?s.trainerNote.substring(0,20):'메모 없음'}</div></div>
+        <span class="badge ${s.attendance===false?'badge-red':'badge-green'}">${s.attendance===false?'결석':'출석'}</span>
+      </div>`;
+    }).join('');
+  }
+  if (!html) {
+    html = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">이 날은 일정이 없습니다</div></div>';
+  }
+  html += `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-primary btn-sm" onclick="openScheduleModalDate('${dateStr}')">+ 일정 추가</button>
+    <button class="btn btn-ghost btn-sm" onclick="openSessionModalDate('${dateStr}')">+ 세션 기록</button>
+  </div>`;
+  body.innerHTML = html;
+}
+
+// ===== MEMBERS =====
+function renderMembers() {
+  const members = DB.getMembers();
+  document.getElementById('member-count-label').textContent = `전체 ${members.length}명`;
+  const grid = document.getElementById('member-grid');
+  if (members.length === 0) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">👥</div><div class="empty-text">등록된 회원이 없습니다<br>회원 추가 버튼을 눌러 시작하세요</div></div>';
+    return;
+  }
+  grid.innerHTML = members.map(m => {
+    const stats = DB.getMemberStats(m.id);
+    return `<div class="member-info-card" onclick="showMemberDetail('${m.id}')">
+      <div class="flex items-center gap-3">
+        <div class="member-avatar">${m.name[0]}</div>
+        <div>
+          <div class="member-card-name">${m.name}</div>
+          <div class="member-card-meta">${m.goal||'목표 미설정'}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.8rem">
+        <div><span class="text-muted">총 세션</span><br><strong>${stats.total}회</strong></div>
+        <div><span class="text-muted">이번달</span><br><strong>${stats.thisMonth}회</strong></div>
+        <div><span class="text-muted">출석률</span><br><strong>${stats.attendance}%</strong></div>
+        <div><span class="text-muted">예정</span><br><strong>${stats.upcomingCount}건</strong></div>
+      </div>
+      ${m.memo ? `<div style="font-size:0.78rem;color:var(--text-2);background:var(--bg);padding:8px;border-radius:6px">${m.memo}</div>` : ''}
+      <div class="flex gap-2">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="event.stopPropagation();openEditMember('${m.id}')">수정</button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();resetMemberPassword('${m.id}')" title="비밀번호 초기화">🔑</button>
+        <button class="btn btn-red btn-sm" onclick="event.stopPropagation();deleteMember('${m.id}')">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showMemberDetail(memberId) {
+  detailMemberId = memberId;
+  const m = DB.getMember(memberId);
+  if (!m) return;
+  showPanel('member-detail');
+  document.getElementById('member-detail-name').textContent = m.name;
+  document.getElementById('edit-member-btn').onclick = () => openEditMember(memberId);
+
+  document.getElementById('member-detail-info').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:0.875rem">
+      <div><span class="text-muted text-xs">이름</span><br>${m.name}</div>
+      <div><span class="text-muted text-xs">전화</span><br>${m.phone||'-'}</div>
+      <div><span class="text-muted text-xs">성별</span><br>${m.gender||'-'}</div>
+      <div><span class="text-muted text-xs">나이</span><br>${m.age?m.age+'세':'-'}</div>
+      <div><span class="text-muted text-xs">키</span><br>${m.height?m.height+'cm':'-'}</div>
+      <div><span class="text-muted text-xs">몸무게</span><br>${m.weight?m.weight+'kg':'-'}</div>
+      <div><span class="text-muted text-xs">목표</span><br>${m.goal||'-'}</div>
+      <div><span class="text-muted text-xs">등록일</span><br>${formatDate(m.joinDate)}</div>
+    </div>
+    ${m.memo ? `<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:6px;font-size:0.85rem">${m.memo}</div>` : ''}
+  `;
+
+  const stats = DB.getMemberStats(memberId);
+  const pt = DB.getPtRemaining(memberId);
+  document.getElementById('member-detail-stats').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="stat-card" style="box-shadow:none;border:1.5px solid var(--border)">
+        <div class="stat-label">총 세션</div>
+        <div class="stat-value" style="font-size:1.4rem">${stats.total}</div>
+      </div>
+      <div class="stat-card" style="box-shadow:none;border:1.5px solid var(--border)">
+        <div class="stat-label">이번달</div>
+        <div class="stat-value" style="font-size:1.4rem">${stats.thisMonth}</div>
+      </div>
+      <div class="stat-card" style="box-shadow:none;border:1.5px solid var(--border)">
+        <div class="stat-label">출석률</div>
+        <div class="stat-value" style="font-size:1.4rem">${stats.attendance}%</div>
+        <div class="progress-bar mt-2"><div class="progress-fill" style="width:${stats.attendance}%"></div></div>
+      </div>
+      <div class="stat-card" style="box-shadow:none;border:1.5px solid var(--border)">
+        <div class="stat-label">예정 세션</div>
+        <div class="stat-value" style="font-size:1.4rem">${stats.upcomingCount}</div>
+      </div>
+    </div>
+    ${pt ? `<div style="margin-top:12px;padding:14px;background:${pt.remaining<=3?'var(--yellow-light)':'var(--green-light)'};border-radius:var(--radius-sm);border:1.5px solid ${pt.remaining<=3?'var(--yellow)':'var(--green)'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:0.8rem;font-weight:700;color:${pt.remaining<=3?'var(--yellow)':'var(--green)'}">🎟️ PT 잔여 횟수</span>
+        <button class="btn btn-ghost btn-sm" onclick="openPtModalForMember('${memberId}')">+ 추가</button>
+      </div>
+      <div style="font-size:1.6rem;font-weight:800;color:${pt.remaining<=3?'var(--yellow)':'var(--green)'}">${pt.remaining}회</div>
+      <div style="font-size:0.75rem;color:var(--text-2);margin-top:4px">${pt.pkg.note||''} · ${pt.used}/${pt.total}회 사용</div>
+      <div class="progress-bar mt-2"><div class="progress-fill" style="width:${Math.round(pt.used/pt.total*100)}%;background:${pt.remaining<=3?'var(--yellow)':'var(--green)'}"></div></div>
+    </div>` : `<div style="margin-top:12px;padding:14px;background:var(--bg);border-radius:var(--radius-sm);text-align:center">
+      <div style="font-size:0.85rem;color:var(--text-2)">PT 패키지 없음</div>
+      <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="openPtModalForMember('${memberId}')">+ 패키지 등록</button>
+    </div>`}
+  `;
+
+  const sessions = DB.getMemberSessions(memberId);
+  const sessionsEl = document.getElementById('member-detail-sessions');
+  if (sessions.length === 0) {
+    sessionsEl.innerHTML = '<div class="empty"><div class="empty-icon">💪</div><div class="empty-text">세션 기록이 없습니다</div></div>';
+  } else {
+    sessionsEl.innerHTML = `<div class="recent-list">${sessions.map(s => `
+      <div class="recent-item" onclick="showSessionDetail('${s.id}')">
+        <div style="width:44px;text-align:center;flex-shrink:0">
+          <div style="font-size:1.1rem;font-weight:800;color:var(--primary)">${new Date(s.date).getDate()}</div>
+          <div style="font-size:0.65rem;color:var(--text-2)">${new Date(s.date).toLocaleDateString('ko-KR',{month:'short'})}</div>
+        </div>
+        <div class="recent-item-info">
+          <div class="recent-item-title">운동 ${s.exercises?.length||0}종목${s.exercises?.length>0?' · '+s.exercises.map(e=>e.name).join(', ').substring(0,20):''}</div>
+          <div class="recent-item-sub">${s.trainerNote||'메모 없음'}</div>
+        </div>
+        <span class="badge ${s.attendance===false?'badge-red':'badge-green'}">${s.attendance===false?'결석':'출석'}</span>
+      </div>`).join('')}</div>`;
+  }
+}
+
+function openSessionModalForMember() {
+  openSessionModal();
+  if (detailMemberId) document.getElementById('s-member').value = detailMemberId;
+}
+
+// ===== SESSIONS PANEL =====
+function renderSessionsPanel() {
+  const filterMember = document.getElementById('session-filter-member')?.value || '';
+  const filterMonth = document.getElementById('session-filter-month')?.value || '';
+  let sessions = DB.getSessions().sort((a,b) => b.date.localeCompare(a.date));
+  if (filterMember) sessions = sessions.filter(s => s.memberId === filterMember);
+  if (filterMonth) sessions = sessions.filter(s => s.date.startsWith(filterMonth));
+
+  const tbody = document.getElementById('sessions-tbody');
+  if (sessions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="empty-icon">💪</div><div class="empty-text">세션 기록이 없습니다</div></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = sessions.map(s => {
+    const m = DB.getMember(s.memberId);
+    return `<tr>
+      <td><strong>${formatDate(s.date)}</strong></td>
+      <td><div class="flex items-center gap-2"><div class="avatar" style="width:24px;height:24px;font-size:0.7rem">${(m?.name||'?')[0]}</div>${m?.name||'?'}</div></td>
+      <td>${s.exercises?.length||0}종목</td>
+      <td><span class="badge ${s.attendance===false?'badge-red':'badge-green'}">${s.attendance===false?'결석':'출석'}</span></td>
+      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.trainerNote||'-'}</td>
+      <td>
+        <div class="flex gap-1">
+          <button class="btn btn-ghost btn-sm" onclick="showSessionDetail('${s.id}')">보기</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditSession('${s.id}')">수정</button>
+          <button class="btn btn-red btn-sm" onclick="deleteSession('${s.id}')">삭제</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== SCHEDULE PANEL =====
+function renderSchedulePanel() {
+  const filterMember = document.getElementById('sch-filter-member')?.value || '';
+  const filterMonth = document.getElementById('sch-filter-month')?.value || '';
+  const filterStatus = document.getElementById('sch-filter-status')?.value || '';
+  let schedules = DB.getSchedules().sort((a,b) => b.date.localeCompare(a.date));
+  if (filterMember) schedules = schedules.filter(s => s.memberId === filterMember);
+  if (filterMonth) schedules = schedules.filter(s => s.date.startsWith(filterMonth));
+  if (filterStatus) schedules = schedules.filter(s => s.status === filterStatus);
+
+  const tbody = document.getElementById('schedule-tbody');
+  if (schedules.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">등록된 일정이 없습니다</div></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = schedules.map(s => {
+    const m = DB.getMember(s.memberId);
+    return `<tr>
+      <td><strong>${formatDate(s.date)}</strong></td>
+      <td>${s.time||'-'}</td>
+      <td><div class="flex items-center gap-2"><div class="avatar" style="width:24px;height:24px;font-size:0.7rem">${(m?.name||'?')[0]}</div>${m?.name||'?'}</div></td>
+      <td>${statusBadge(s.status)}</td>
+      <td>${s.memo||'-'}</td>
+      <td>
+        <div class="flex gap-1">
+          <button class="btn btn-ghost btn-sm" onclick="openScheduleEdit('${s.id}')">수정</button>
+          <button class="btn btn-red btn-sm" onclick="deleteSchedule('${s.id}')">삭제</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== ATTENDANCE =====
+function renderAttendance() {
+  const month = document.getElementById('att-month').value;
+  if (!month) return;
+  const [y, m] = month.split('-').map(Number);
+  const members = DB.getMembers();
+  const sessions = DB.getMonthSessions(y, m);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const el = document.getElementById('attendance-content');
+
+  if (members.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">회원이 없습니다</div></div>';
+    return;
+  }
+
+  el.innerHTML = `<div class="card">
+    <div class="card-header"><span class="card-title">${y}년 ${m}월 출석 현황</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>회원</th>
+            ${Array.from({length:daysInMonth},(_,i)=>`<th style="min-width:28px;padding:6px 4px;text-align:center;font-size:0.7rem">${i+1}</th>`).join('')}
+            <th>출석</th>
+            <th>결석</th>
+            <th>출석률</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${members.map(member => {
+            const memberSessions = sessions.filter(s => s.memberId === member.id);
+            let att = 0, abs = 0;
+            const days = Array.from({length:daysInMonth},(_,i) => {
+              const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`;
+              const s = memberSessions.find(s => s.date === dateStr);
+              if (s) { if (s.attendance===false) abs++; else att++; }
+              return s ? (s.attendance===false?'<span style="color:var(--red);font-size:0.9rem">✗</span>':'<span style="color:var(--green);font-size:0.9rem">●</span>') : '';
+            });
+            const total = att + abs;
+            const rate = total > 0 ? Math.round(att/total*100) : 0;
+            return `<tr>
+              <td><div class="flex items-center gap-2"><div class="avatar" style="width:24px;height:24px;font-size:0.7rem">${member.name[0]}</div>${member.name}</div></td>
+              ${days.map(d=>`<td style="text-align:center;padding:6px 4px">${d}</td>`).join('')}
+              <td style="text-align:center"><strong style="color:var(--green)">${att}</strong></td>
+              <td style="text-align:center"><strong style="color:var(--red)">${abs}</strong></td>
+              <td><div class="badge badge-${rate>=80?'green':rate>=50?'yellow':'red'}">${rate}%</div></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ===== MEMBER MODAL =====
+function openAddMemberModal() {
+  document.getElementById('modal-member-title').textContent = '회원 추가';
+  document.getElementById('edit-member-id').value = '';
+  ['m-name','m-phone','m-password','m-age','m-height','m-weight','m-memo'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('m-gender').value = '';
+  document.getElementById('m-goal').value = '';
+  document.getElementById('m-joindate').value = today.toISOString().split('T')[0];
+  openModal('modal-member');
+}
+
+function openEditMember(id) {
+  const m = DB.getMember(id);
+  if (!m) return;
+  document.getElementById('modal-member-title').textContent = '회원 수정';
+  document.getElementById('edit-member-id').value = id;
+  document.getElementById('m-name').value = m.name||'';
+  document.getElementById('m-phone').value = m.phone||'';
+  document.getElementById('m-password').value = m.password||'';
+  document.getElementById('m-joindate').value = m.joinDate||'';
+  document.getElementById('m-gender').value = m.gender||'';
+  document.getElementById('m-age').value = m.age||'';
+  document.getElementById('m-height').value = m.height||'';
+  document.getElementById('m-weight').value = m.weight||'';
+  document.getElementById('m-goal').value = m.goal||'';
+  document.getElementById('m-memo').value = m.memo||'';
+  openModal('modal-member');
+}
+
+function saveMember() {
+  const name = document.getElementById('m-name').value.trim();
+  const pw = document.getElementById('m-password').value.trim();
+  if (!name) { toast('이름을 입력하세요', 'error'); return; }
+  if (!pw) { toast('비밀번호를 입력하세요', 'error'); return; }
+
+  const data = {
+    name, password: pw,
+    phone: document.getElementById('m-phone').value.trim(),
+    joinDate: document.getElementById('m-joindate').value,
+    gender: document.getElementById('m-gender').value,
+    age: document.getElementById('m-age').value,
+    height: document.getElementById('m-height').value,
+    weight: document.getElementById('m-weight').value,
+    goal: document.getElementById('m-goal').value,
+    memo: document.getElementById('m-memo').value.trim(),
+  };
+
+  const editId = document.getElementById('edit-member-id').value;
+  if (editId) { DB.updateMember(editId, data); toast('회원 정보가 수정되었습니다', 'success'); }
+  else { DB.addMember(data); toast('회원이 추가되었습니다', 'success'); }
+
+  closeModal('modal-member');
+  renderMembers();
+  populateMemberSelects();
+  renderDashboard();
+}
+
+function deleteMember(id) {
+  const m = DB.getMember(id);
+  if (!confirm(`${m?.name} 회원을 삭제하시겠습니까?\n관련 세션과 일정도 모두 삭제됩니다.`)) return;
+  DB.deleteMember(id);
+  toast('회원이 삭제되었습니다');
+  renderMembers();
+  populateMemberSelects();
+  renderDashboard();
+}
+
+// ===== SESSION MODAL =====
+function openSessionModal(date) {
+  document.getElementById('modal-session-title').textContent = '세션 기록 추가';
+  document.getElementById('edit-session-id').value = '';
+  document.getElementById('s-date').value = date || today.toISOString().split('T')[0];
+  document.getElementById('s-time').value = '';
+  document.getElementById('s-attendance').value = 'true';
+  document.getElementById('s-trainer-note').value = '';
+  document.getElementById('s-next-plan').value = '';
+  document.getElementById('exercises-container').innerHTML = '';
+  addExerciseBlock();
+  openModal('modal-session');
+}
+
+function openSessionModalDate(date) { showPanel('sessions'); openSessionModal(date); }
+
+function openEditSession(id) {
+  const s = DB.getSession(id);
+  if (!s) return;
+  document.getElementById('modal-session-title').textContent = '세션 수정';
+  document.getElementById('edit-session-id').value = id;
+  document.getElementById('s-member').value = s.memberId;
+  document.getElementById('s-date').value = s.date;
+  document.getElementById('s-time').value = s.startTime||'';
+  document.getElementById('s-attendance').value = String(s.attendance !== false);
+  document.getElementById('s-trainer-note').value = s.trainerNote||'';
+  document.getElementById('s-next-plan').value = s.nextPlan||'';
+  document.getElementById('exercises-container').innerHTML = '';
+  (s.exercises||[]).forEach(e => addExerciseBlock(e));
+  if (!s.exercises?.length) addExerciseBlock();
+  openModal('modal-session');
+}
+
+let exerciseCount = 0;
+function addExerciseBlock(data) {
+  const id = ++exerciseCount;
+  const container = document.getElementById('exercises-container');
+  const div = document.createElement('div');
+  div.className = 'exercise-block';
+  div.id = `exercise-${id}`;
+  div.innerHTML = `
+    <div class="exercise-header">
+      <input class="input" type="text" placeholder="운동 이름 (예: 스쿼트)" value="${data?.name||''}" style="flex:1" id="ex-name-${id}">
+      <select class="select" style="width:120px" id="ex-unit-${id}">
+        <option value="weight" ${data?.unit!=='time'?'selected':''}>무게 (kg)</option>
+        <option value="time" ${data?.unit==='time'?'selected':''}>시간 (초)</option>
+      </select>
+      <button class="btn btn-red btn-sm btn-icon" onclick="document.getElementById('exercise-${id}').remove()">✕</button>
+    </div>
+    <div class="sets-header" style="margin-bottom:4px">
+      <span class="set-label"></span>
+      <span class="set-label">세트</span>
+      <span class="set-label">횟수</span>
+      <span class="set-label" id="ex-unit-label-${id}">${data?.unit==='time'?'시간(초)':'무게(kg)'}</span>
+      <span></span>
+    </div>
+    <div id="sets-${id}"></div>
+    <div class="flex gap-2 mt-2">
+      <button class="btn btn-ghost btn-sm" onclick="addSet(${id})">+ 세트 추가</button>
+    </div>
+    <div class="input-group" style="margin-top:10px">
+      <label>운동 메모</label>
+      <input class="input" type="text" id="ex-note-${id}" placeholder="특이사항" value="${data?.note||''}">
+    </div>
+  `;
+  container.appendChild(div);
+  document.getElementById(`ex-unit-${id}`).onchange = () => {
+    document.getElementById(`ex-unit-label-${id}`).textContent = document.getElementById(`ex-unit-${id}`).value === 'time' ? '시간(초)' : '무게(kg)';
+  };
+  (data?.sets||[{reps:'',weight:''}]).forEach(set => addSet(id, set));
+}
+
+let setCount = 0;
+function addSet(exerciseId, data) {
+  const container = document.getElementById(`sets-${exerciseId}`);
+  const setId = ++setCount;
+  const setNum = container.children.length + 1;
+  const div = document.createElement('div');
+  div.className = 'set-row';
+  div.id = `set-${setId}`;
+  div.innerHTML = `
+    <span class="set-num">${setNum}</span>
+    <input class="input" type="number" placeholder="-" value="${data?.set||setNum}" style="text-align:center" readonly>
+    <input class="input" type="number" placeholder="횟수" value="${data?.reps||''}">
+    <input class="input" type="number" placeholder="0" step="0.5" value="${data?.weight||''}">
+    <button class="btn btn-ghost btn-sm btn-icon" onclick="document.getElementById('set-${setId}').remove();updateSetNums(${exerciseId})">✕</button>
+  `;
+  container.appendChild(div);
+}
+
+function updateSetNums(exerciseId) {
+  const container = document.getElementById(`sets-${exerciseId}`);
+  Array.from(container.children).forEach((row, i) => {
+    const numEl = row.querySelector('.set-num');
+    const setInput = row.querySelectorAll('input')[0];
+    if (numEl) numEl.textContent = i+1;
+    if (setInput) setInput.value = i+1;
+  });
+}
+
+function collectExercises() {
+  const exercises = [];
+  document.querySelectorAll('.exercise-block').forEach(block => {
+    const id = block.id.replace('exercise-','');
+    const name = document.getElementById(`ex-name-${id}`)?.value?.trim();
+    if (!name) return;
+    const unit = document.getElementById(`ex-unit-${id}`)?.value || 'weight';
+    const note = document.getElementById(`ex-note-${id}`)?.value?.trim() || '';
+    const sets = [];
+    document.querySelectorAll(`#sets-${id} .set-row`).forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      sets.push({ set: parseInt(inputs[0]?.value)||0, reps: inputs[1]?.value||'', weight: inputs[2]?.value||'' });
+    });
+    exercises.push({ name, unit, sets, note });
+  });
+  return exercises;
+}
+
+function saveSession() {
+  const memberId = document.getElementById('s-member').value;
+  const date = document.getElementById('s-date').value;
+  if (!memberId) { toast('회원을 선택하세요', 'error'); return; }
+  if (!date) { toast('날짜를 선택하세요', 'error'); return; }
+
+  const data = {
+    memberId, date,
+    startTime: document.getElementById('s-time').value,
+    attendance: document.getElementById('s-attendance').value === 'true',
+    exercises: collectExercises(),
+    trainerNote: document.getElementById('s-trainer-note').value.trim(),
+    nextPlan: document.getElementById('s-next-plan').value.trim(),
+  };
+
+  const editId = document.getElementById('edit-session-id').value;
+  if (editId) { DB.updateSession(editId, data); toast('세션이 수정되었습니다', 'success'); }
+  else { DB.addSession(data); toast('세션이 기록되었습니다', 'success'); }
+
+  closeModal('modal-session');
+  renderSessionsPanel();
+  renderDashboard();
+  if (detailMemberId === memberId) showMemberDetail(memberId);
+}
+
+function deleteSession(id) {
+  if (!confirm('이 세션 기록을 삭제하시겠습니까?')) return;
+  DB.deleteSession(id);
+  toast('세션이 삭제되었습니다');
+  renderSessionsPanel();
+  renderDashboard();
+}
+
+function showSessionDetail(id) {
+  const s = DB.getSession(id);
+  if (!s) return;
+  const m = DB.getMember(s.memberId);
+  document.getElementById('session-detail-title').textContent = `${m?.name||'?'} · ${formatDate(s.date)}`;
+  document.getElementById('session-detail-body').innerHTML = `
+    <div class="flex gap-3 flex-wrap mb-3">
+      <span class="badge ${s.attendance===false?'badge-red':'badge-green'}">${s.attendance===false?'결석':'출석'}</span>
+      ${s.startTime?`<span class="badge badge-gray">${s.startTime}</span>`:''}
+      <span class="badge badge-purple">운동 ${s.exercises?.length||0}종목</span>
+    </div>
+    ${(s.exercises||[]).map(e => `
+      <div class="exercise-item">
+        <div class="exercise-name">💪 ${e.name}</div>
+        <table class="sets-table">
+          <thead><tr><th>세트</th><th>횟수</th><th>${e.unit==='time'?'시간(초)':'무게(kg)'}</th></tr></thead>
+          <tbody>${(e.sets||[]).map(set=>`<tr><td>${set.set}</td><td>${set.reps}회</td><td>${set.weight}${e.unit==='time'?'초':'kg'}</td></tr>`).join('')}</tbody>
+        </table>
+        ${e.note?`<div style="margin-top:6px;font-size:0.78rem;color:var(--text-2)">📝 ${e.note}</div>`:''}
+      </div>`).join('')}
+    ${s.trainerNote?`<div style="background:var(--primary-light);border-radius:8px;padding:12px;margin-top:4px"><div style="font-size:0.75rem;font-weight:700;color:var(--primary);margin-bottom:4px">트레이너 피드백</div><div style="font-size:0.875rem">${s.trainerNote}</div></div>`:''}
+    ${s.nextPlan?`<div style="background:var(--orange-light);border-radius:8px;padding:12px;margin-top:8px"><div style="font-size:0.75rem;font-weight:700;color:var(--orange);margin-bottom:4px">다음 세션 계획</div><div style="font-size:0.875rem">${s.nextPlan}</div></div>`:''}
+  `;
+  document.getElementById('session-detail-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal('modal-session-detail')">닫기</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-session-detail');openEditSession('${id}')">수정</button>
+    <button class="btn btn-red" onclick="closeModal('modal-session-detail');deleteSession('${id}')">삭제</button>
+  `;
+  openModal('modal-session-detail');
+}
+
+// ===== SCHEDULE MODAL =====
+function openScheduleModal(date) {
+  document.getElementById('modal-schedule-title').textContent = '일정 추가';
+  document.getElementById('edit-schedule-id').value = '';
+  document.getElementById('sch-member').value = '';
+  document.getElementById('sch-date').value = date || today.toISOString().split('T')[0];
+  document.getElementById('sch-time').value = '';
+  document.getElementById('sch-status').value = 'scheduled';
+  document.getElementById('sch-memo').value = '';
+  openModal('modal-schedule');
+}
+
+function openScheduleModalDate(date) { openScheduleModal(date); }
+
+function openScheduleEdit(id) {
+  const s = DB.getSchedules().find(s => s.id === id);
+  if (!s) return;
+  document.getElementById('modal-schedule-title').textContent = '일정 수정';
+  document.getElementById('edit-schedule-id').value = id;
+  document.getElementById('sch-member').value = s.memberId;
+  document.getElementById('sch-date').value = s.date;
+  document.getElementById('sch-time').value = s.time||'';
+  document.getElementById('sch-status').value = s.status||'scheduled';
+  document.getElementById('sch-memo').value = s.memo||'';
+  openModal('modal-schedule');
+}
+
+function openScheduleDetailModal(id) { openScheduleEdit(id); }
+
+function saveSchedule() {
+  const memberId = document.getElementById('sch-member').value;
+  const date = document.getElementById('sch-date').value;
+  if (!memberId) { toast('회원을 선택하세요', 'error'); return; }
+  if (!date) { toast('날짜를 선택하세요', 'error'); return; }
+
+  const data = {
+    memberId, date,
+    time: document.getElementById('sch-time').value,
+    status: document.getElementById('sch-status').value,
+    memo: document.getElementById('sch-memo').value.trim(),
+  };
+
+  const editId = document.getElementById('edit-schedule-id').value;
+  if (editId) { DB.updateSchedule(editId, data); toast('일정이 수정되었습니다', 'success'); }
+  else { DB.addSchedule(data); toast('일정이 추가되었습니다', 'success'); }
+
+  closeModal('modal-schedule');
+  renderCalendar();
+  renderSchedulePanel();
+  renderDashboard();
+  if (selectedCalDate) selectCalDate(selectedCalDate);
+}
+
+function deleteSchedule(id) {
+  if (!confirm('이 일정을 삭제하시겠습니까?')) return;
+  DB.deleteSchedule(id);
+  toast('일정이 삭제되었습니다');
+  renderCalendar();
+  renderSchedulePanel();
+  renderDashboard();
+  if (selectedCalDate) selectCalDate(selectedCalDate);
+}
+
+// ===== PT 횟수 =====
+function renderPtPanel() {
+  const members = DB.getMembers();
+  const alertArea = document.getElementById('pt-alert-area');
+  const grid = document.getElementById('pt-member-grid');
+  if (!grid) return;
+
+  const alerts = [];
+  if (members.length === 0) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🎟️</div><div class="empty-text">등록된 회원이 없습니다</div></div>';
+    return;
+  }
+
+  grid.innerHTML = members.map(m => {
+    const pt = DB.getPtRemaining(m.id);
+    const pkgs = DB.getMemberPtPackages(m.id);
+    if (pt && pt.remaining <= 3) alerts.push(`${m.name} (${pt.remaining}회 남음)`);
+    const pct = pt ? Math.round(pt.used/pt.total*100) : 0;
+    const color = !pt ? 'var(--text-3)' : pt.remaining <= 3 ? 'var(--yellow)' : 'var(--green)';
+    return `<div class="member-info-card">
+      <div class="flex items-center gap-3">
+        <div class="member-avatar">${m.name[0]}</div>
+        <div><div class="member-card-name">${m.name}</div><div class="member-card-meta">${pkgs.length}개 패키지 이력</div></div>
+      </div>
+      ${pt ? `<div style="text-align:center;padding:12px 0">
+        <div style="font-size:2rem;font-weight:800;color:${color}">${pt.remaining}</div>
+        <div style="font-size:0.78rem;color:var(--text-2)">잔여 / ${pt.total}회 패키지</div>
+        <div class="progress-bar mt-2"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div style="font-size:0.75rem;color:var(--text-3);margin-top:4px">${pt.used}회 사용${pt.pkg.expiryDate?' · 만료 '+pt.pkg.expiryDate:''}</div>
+      </div>` : `<div style="text-align:center;padding:16px 0;color:var(--text-3)">패키지 없음</div>`}
+      <div class="flex gap-2">
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="openPtModalForMember('${m.id}')">+ 패키지 추가</button>
+        ${pkgs.length > 0 ? `<button class="btn btn-ghost btn-sm" onclick="showPtHistory('${m.id}')">이력</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  if (alertArea) {
+    alertArea.innerHTML = alerts.length > 0
+      ? `<div style="background:var(--yellow-light);border:1.5px solid var(--yellow);border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;gap:10px"><span style="font-size:1.2rem">⚠️</span><div><strong>PT 횟수 소진 임박</strong> · ${alerts.join(', ')}</div></div>`
+      : '';
+  }
+}
+
+function openPtModal() {
+  document.getElementById('modal-pt-title').textContent = 'PT 패키지 추가';
+  document.getElementById('edit-pt-id').value = '';
+  document.getElementById('pt-member').value = '';
+  document.getElementById('pt-total').value = '';
+  document.getElementById('pt-purchase-date').value = today.toISOString().split('T')[0];
+  document.getElementById('pt-expiry-date').value = '';
+  document.getElementById('pt-note').value = '';
+  openModal('modal-pt');
+}
+
+function openPtModalForMember(memberId) {
+  openPtModal();
+  document.getElementById('pt-member').value = memberId;
+}
+
+function savePtPackage() {
+  const memberId = document.getElementById('pt-member').value;
+  const total = parseInt(document.getElementById('pt-total').value);
+  if (!memberId) { toast('회원을 선택하세요', 'error'); return; }
+  if (!total || total < 1) { toast('횟수를 입력하세요', 'error'); return; }
+  DB.addPtPackage({
+    memberId, total,
+    purchaseDate: document.getElementById('pt-purchase-date').value || today.toISOString().split('T')[0],
+    expiryDate: document.getElementById('pt-expiry-date').value,
+    note: document.getElementById('pt-note').value.trim(),
+  });
+  toast('PT 패키지가 등록되었습니다', 'success');
+  closeModal('modal-pt');
+  renderPtPanel();
+  if (detailMemberId === memberId) showMemberDetail(memberId);
+}
+
+function showPtHistory(memberId) {
+  const m = DB.getMember(memberId);
+  const pkgs = DB.getMemberPtPackages(memberId);
+  const content = pkgs.map(p => {
+    const used = DB.getSessions().filter(s => s.memberId === memberId && s.attendance !== false && s.date >= p.purchaseDate).length;
+    return `<div style="border:1.5px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px">
+      <div class="flex items-center justify-between">
+        <div><strong>${p.total}회 패키지</strong> ${p.active?'<span class="badge badge-green">현재</span>':''}</div>
+        <button class="btn btn-red btn-sm btn-icon" onclick="DB.deletePtPackage('${p.id}');renderPtPanel();closeModal('modal-session-detail')">🗑</button>
+      </div>
+      <div style="font-size:0.8rem;color:var(--text-2);margin-top:4px">구매일: ${p.purchaseDate} · 사용: ${used}/${p.total}회${p.expiryDate?' · 만료: '+p.expiryDate:''}</div>
+      ${p.note?`<div style="font-size:0.78rem;color:var(--text-2);margin-top:4px">${p.note}</div>`:''}
+    </div>`;
+  }).join('') || '<div class="empty"><div class="empty-text">패키지 이력 없음</div></div>';
+
+  document.getElementById('session-detail-title').textContent = `${m?.name} · PT 패키지 이력`;
+  document.getElementById('session-detail-body').innerHTML = content;
+  document.getElementById('session-detail-footer').innerHTML = `<button class="btn btn-ghost" onclick="closeModal('modal-session-detail')">닫기</button>`;
+  openModal('modal-session-detail');
+}
+
+// ===== ROUTINES =====
+function renderRoutinesPanel() {
+  const routines = DB.getRoutines();
+  const grid = document.getElementById('routine-grid');
+  if (!grid) return;
+  if (routines.length === 0) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📋</div><div class="empty-text">저장된 루틴이 없습니다<br>자주 쓰는 운동 세트를 저장해두세요</div></div>';
+    return;
+  }
+  grid.innerHTML = routines.map(r => `
+    <div class="member-info-card">
+      <div class="flex items-center gap-3">
+        <div class="member-avatar" style="background:var(--orange-light);color:var(--orange)">📋</div>
+        <div>
+          <div class="member-card-name">${r.name}</div>
+          <div class="member-card-meta">${r.category||'분류 없음'} · ${r.exercises?.length||0}종목</div>
+        </div>
+      </div>
+      ${r.description?`<div style="font-size:0.8rem;color:var(--text-2)">${r.description}</div>`:''}
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${(r.exercises||[]).map(e=>`<span class="badge badge-purple">${e.name}</span>`).join('')}
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="showPanel('sessions');openSessionModal();applyRoutine('${r.id}')">세션에 적용</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditRoutine('${r.id}')">수정</button>
+        <button class="btn btn-red btn-sm" onclick="deleteRoutine('${r.id}')">삭제</button>
+      </div>
+    </div>`).join('');
+}
+
+let exLibCategory = '하체';
+
+function initExLibrary() {
+  // 카테고리 탭
+  const cats = Object.keys(EXERCISE_DB);
+  document.getElementById('ex-lib-cats').innerHTML = cats.map(c =>
+    `<span class="tag ${c===exLibCategory?'tag-selected':'tag-unselected'}" onclick="setExLibCat('${c}')">${c}</span>`
+  ).join('');
+  renderExLibGrid();
+}
+
+function setExLibCat(cat) {
+  exLibCategory = cat;
+  document.getElementById('ex-lib-search').value = '';
+  initExLibrary();
+}
+
+function filterExLibrary() {
+  const q = document.getElementById('ex-lib-search').value.trim().toLowerCase();
+  if (q) {
+    // 검색 모드: 전체 종목에서 검색
+    const all = Object.values(EXERCISE_DB).flat();
+    const filtered = all.filter(e => e.toLowerCase().includes(q));
+    renderExLibGrid(filtered);
+  } else {
+    renderExLibGrid();
+  }
+}
+
+function renderExLibGrid(overrideList) {
+  const list = overrideList || EXERCISE_DB[exLibCategory] || [];
+  const checked = getCheckedExercises();
+  document.getElementById('ex-lib-grid').innerHTML = list.map(name => {
+    const isChecked = checked.includes(name);
+    return `<label style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:0.8rem;border:1.5px solid ${isChecked?'var(--primary)':'var(--border)'};background:${isChecked?'var(--primary-light)':'#fff'};transition:all 0.12s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="if(!document.getElementById('excheck-${name.replace(/\s/g,'_')}').checked)this.style.borderColor='var(--border)'">
+      <input type="checkbox" id="excheck-${name.replace(/\s/g,'_')}" value="${name}" ${isChecked?'checked':''} style="width:14px;height:14px;accent-color:var(--primary)" onchange="updateExLibChecked(this,'${name}')">
+      ${name}
+    </label>`;
+  }).join('');
+  updateExLibCount();
+}
+
+function getCheckedExercises() {
+  return Array.from(document.querySelectorAll('#ex-lib-grid input[type=checkbox]:checked')).map(el => el.value);
+}
+
+function updateExLibChecked(el, name) {
+  const label = el.parentElement;
+  if (el.checked) { label.style.borderColor = 'var(--primary)'; label.style.background = 'var(--primary-light)'; }
+  else { label.style.borderColor = 'var(--border)'; label.style.background = '#fff'; }
+  updateExLibCount();
+}
+
+function updateExLibCount() {
+  const cnt = document.querySelectorAll('#ex-lib-grid input[type=checkbox]:checked').length;
+  document.getElementById('ex-lib-selected-count').textContent = `${cnt}개 선택됨`;
+}
+
+function addCheckedExercises() {
+  const checked = getCheckedExercises();
+  if (checked.length === 0) { toast('종목을 선택하세요', 'error'); return; }
+  checked.forEach(name => addRoutineExercise({ name }));
+  // uncheck all
+  document.querySelectorAll('#ex-lib-grid input[type=checkbox]').forEach(el => {
+    el.checked = false;
+    const label = el.parentElement;
+    label.style.borderColor = 'var(--border)';
+    label.style.background = '#fff';
+  });
+  updateExLibCount();
+  toast(`${checked.length}개 종목이 추가되었습니다`, 'success');
+}
+
+function openRoutineModal() {
+  document.getElementById('modal-routine-title').textContent = '루틴 템플릿 추가';
+  document.getElementById('edit-routine-id').value = '';
+  document.getElementById('r-name').value = '';
+  document.getElementById('r-category').value = '';
+  document.getElementById('r-desc').value = '';
+  document.getElementById('routine-exercises-container').innerHTML = '';
+  document.getElementById('routine-ex-count').textContent = '0';
+  exLibCategory = '하체';
+  initExLibrary();
+  openModal('modal-routine');
+}
+
+function openEditRoutine(id) {
+  const r = DB.getRoutine(id);
+  if (!r) return;
+  document.getElementById('modal-routine-title').textContent = '루틴 수정';
+  document.getElementById('edit-routine-id').value = id;
+  document.getElementById('r-name').value = r.name||'';
+  document.getElementById('r-category').value = r.category||'';
+  document.getElementById('r-desc').value = r.description||'';
+  document.getElementById('routine-exercises-container').innerHTML = '';
+  exLibCategory = r.category && EXERCISE_DB[r.category] ? r.category : '하체';
+  initExLibrary();
+  (r.exercises||[]).forEach(e => addRoutineExercise(e));
+  document.getElementById('routine-ex-count').textContent = document.querySelectorAll('#routine-exercises-container .exercise-block').length;
+  openModal('modal-routine');
+}
+
+let routineExCount = 0;
+function addRoutineExercise(data) {
+  const id = ++routineExCount;
+  const container = document.getElementById('routine-exercises-container');
+  const div = document.createElement('div');
+  div.className = 'exercise-block';
+  div.id = `rex-${id}`;
+  div.innerHTML = `
+    <div class="exercise-header">
+      <input class="input" type="text" placeholder="운동 이름" value="${data?.name||''}" style="flex:1" id="rex-name-${id}">
+      <select class="select" style="width:110px" id="rex-unit-${id}">
+        <option value="weight" ${data?.unit!=='time'?'selected':''}>무게(kg)</option>
+        <option value="time" ${data?.unit==='time'?'selected':''}>시간(초)</option>
+      </select>
+      <button class="btn btn-red btn-sm btn-icon" onclick="document.getElementById('rex-${id}').remove();updateRoutineExCount()">✕</button>
+    </div>
+    <div class="sets-header" style="margin-bottom:4px">
+      <span class="set-label"></span><span class="set-label">세트</span><span class="set-label">횟수</span><span class="set-label">무게/시간</span><span></span>
+    </div>
+    <div id="rsets-${id}"></div>
+    <button class="btn btn-ghost btn-sm mt-2" onclick="addRoutineSet(${id})">+ 세트 추가</button>
+  `;
+  container.appendChild(div);
+  (data?.sets||[{reps:'',weight:''}]).forEach(s => addRoutineSet(id, s));
+  updateRoutineExCount();
+}
+
+function updateRoutineExCount() {
+  const cnt = document.querySelectorAll('#routine-exercises-container .exercise-block').length;
+  const el = document.getElementById('routine-ex-count');
+  if (el) el.textContent = cnt;
+}
+
+let routineSetCount = 0;
+function addRoutineSet(exId, data) {
+  const container = document.getElementById(`rsets-${exId}`);
+  const id = ++routineSetCount;
+  const num = container.children.length + 1;
+  const div = document.createElement('div');
+  div.className = 'set-row';
+  div.id = `rset-${id}`;
+  div.innerHTML = `<span class="set-num">${num}</span>
+    <input class="input" type="number" value="${num}" style="text-align:center" readonly>
+    <input class="input" type="number" placeholder="횟수" value="${data?.reps||''}">
+    <input class="input" type="number" placeholder="0" step="0.5" value="${data?.weight||''}">
+    <button class="btn btn-ghost btn-sm btn-icon" onclick="document.getElementById('rset-${id}').remove()">✕</button>`;
+  container.appendChild(div);
+}
+
+function collectRoutineExercises() {
+  const exs = [];
+  document.querySelectorAll('#routine-exercises-container .exercise-block').forEach(block => {
+    const id = block.id.replace('rex-','');
+    const name = document.getElementById(`rex-name-${id}`)?.value?.trim();
+    if (!name) return;
+    const unit = document.getElementById(`rex-unit-${id}`)?.value || 'weight';
+    const sets = [];
+    document.querySelectorAll(`#rsets-${id} .set-row`).forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      sets.push({ set: parseInt(inputs[0]?.value)||0, reps: inputs[1]?.value||'', weight: inputs[2]?.value||'' });
+    });
+    exs.push({ name, unit, sets });
+  });
+  return exs;
+}
+
+function saveRoutine() {
+  const name = document.getElementById('r-name').value.trim();
+  if (!name) { toast('루틴 이름을 입력하세요', 'error'); return; }
+  const data = {
+    name,
+    category: document.getElementById('r-category').value,
+    description: document.getElementById('r-desc').value.trim(),
+    exercises: collectRoutineExercises(),
+  };
+  const editId = document.getElementById('edit-routine-id').value;
+  if (editId) { DB.updateRoutine(editId, data); toast('루틴이 수정되었습니다', 'success'); }
+  else { DB.addRoutine(data); toast('루틴이 저장되었습니다', 'success'); }
+  closeModal('modal-routine');
+  renderRoutinesPanel();
+}
+
+function deleteRoutine(id) {
+  if (!confirm('이 루틴을 삭제하시겠습니까?')) return;
+  DB.deleteRoutine(id);
+  toast('루틴이 삭제되었습니다');
+  renderRoutinesPanel();
+}
+
+function openRoutinePicker() {
+  const routines = DB.getRoutines();
+  const list = document.getElementById('routine-picker-list');
+  if (routines.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">저장된 루틴이 없습니다</div></div>';
+  } else {
+    list.innerHTML = routines.map(r => `
+      <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;cursor:pointer;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'" onclick="applyRoutine('${r.id}')">
+        <div style="font-weight:700;margin-bottom:4px">${r.name} ${r.category?`<span class="badge badge-purple">${r.category}</span>`:''}</div>
+        <div style="font-size:0.8rem;color:var(--text-2)">${(r.exercises||[]).map(e=>e.name).join(', ')}</div>
+      </div>`).join('');
+  }
+  openModal('modal-routine-picker');
+}
+
+function applyRoutine(id) {
+  const r = DB.getRoutine(id);
+  if (!r) return;
+  document.getElementById('exercises-container').innerHTML = '';
+  (r.exercises||[]).forEach(e => addExerciseBlock(e));
+  closeModal('modal-routine-picker');
+  toast(`"${r.name}" 루틴이 적용되었습니다`, 'success');
+}
+
+// ===== NOTICES =====
+function renderNoticesPanel() {
+  const notices = DB.getNotices();
+  const tbody = document.getElementById('notices-tbody');
+  if (!tbody) return;
+  if (notices.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><div class="empty-icon">📢</div><div class="empty-text">공지사항이 없습니다</div></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = [...notices].sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0) || b.date.localeCompare(a.date)).map(n => `
+    <tr>
+      <td>${n.date}</td>
+      <td><strong>${n.title}</strong></td>
+      <td style="max-width:250px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.content}</td>
+      <td>${n.pinned?'<span class="badge badge-orange">📌 고정</span>':'<span class="badge badge-gray">-</span>'}</td>
+      <td>
+        <div class="flex gap-1">
+          <button class="btn btn-ghost btn-sm" onclick="openEditNotice('${n.id}')">수정</button>
+          <button class="btn btn-red btn-sm" onclick="deleteNotice('${n.id}')">삭제</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function openNoticeModal() {
+  document.getElementById('modal-notice-title').textContent = '공지 작성';
+  document.getElementById('edit-notice-id').value = '';
+  document.getElementById('n-title').value = '';
+  document.getElementById('n-content').value = '';
+  document.getElementById('n-pinned').checked = false;
+  openModal('modal-notice');
+}
+
+function openEditNotice(id) {
+  const n = DB.getNotice(id);
+  if (!n) return;
+  document.getElementById('modal-notice-title').textContent = '공지 수정';
+  document.getElementById('edit-notice-id').value = id;
+  document.getElementById('n-title').value = n.title||'';
+  document.getElementById('n-content').value = n.content||'';
+  document.getElementById('n-pinned').checked = !!n.pinned;
+  openModal('modal-notice');
+}
+
+function saveNotice() {
+  const title = document.getElementById('n-title').value.trim();
+  const content = document.getElementById('n-content').value.trim();
+  if (!title) { toast('제목을 입력하세요', 'error'); return; }
+  if (!content) { toast('내용을 입력하세요', 'error'); return; }
+  const data = { title, content, pinned: document.getElementById('n-pinned').checked };
+  const editId = document.getElementById('edit-notice-id').value;
+  if (editId) { DB.updateNotice(editId, data); toast('공지가 수정되었습니다', 'success'); }
+  else { DB.addNotice(data); toast('공지가 등록되었습니다', 'success'); }
+  closeModal('modal-notice');
+  renderNoticesPanel();
+}
+
+function deleteNotice(id) {
+  if (!confirm('이 공지를 삭제하시겠습니까?')) return;
+  DB.deleteNotice(id);
+  toast('공지가 삭제되었습니다');
+  renderNoticesPanel();
+}
+
+// ===== BACKUP / CSV =====
+function exportBackup() {
+  const json = DB.exportBackup();
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `bodycalendar_backup_${today.toISOString().split('T')[0]}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('백업 파일이 다운로드되었습니다', 'success');
+}
+
+function importBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!confirm('현재 데이터가 백업 파일로 덮어씌워집니다. 계속하시겠습니까?')) { input.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try { DB.importBackup(e.target.result); toast('데이터가 복원되었습니다. 페이지를 새로고침합니다', 'success'); setTimeout(() => location.reload(), 1500); }
+    catch { toast('파일 형식이 올바르지 않습니다', 'error'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function exportCsv() {
+  const memberId = document.getElementById('csv-member')?.value || '';
+  const csv = DB.exportSessionsCsv(memberId);
+  const bom = '﻿';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `세션기록_${today.toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV 파일이 다운로드되었습니다', 'success');
+}
+
+// ===== MEMBER PW RESET =====
+function resetMemberPassword(id) {
+  const m = DB.getMember(id);
+  if (!m) return;
+  const newPw = prompt(`${m.name} 회원의 임시 비밀번호를 입력하세요:`, '1234');
+  if (newPw === null) return;
+  if (!newPw.trim()) { toast('비밀번호를 입력하세요', 'error'); return; }
+  DB.updateMember(id, { password: newPw.trim() });
+  toast(`${m.name} 회원의 비밀번호가 "${newPw.trim()}"으로 초기화되었습니다`, 'success');
+}
+
+// ===== SETTINGS =====
+function copyMemberLink() {
+  const link = document.getElementById('member-link-input').value;
+  navigator.clipboard.writeText(link).then(() => toast('링크가 복사되었습니다', 'success')).catch(() => {
+    document.getElementById('member-link-input').select();
+    document.execCommand('copy');
+    toast('링크가 복사되었습니다', 'success');
+  });
+}
+
+function changeAdminPw() {
+  const cur = document.getElementById('cur-pw').value;
+  const nw = document.getElementById('new-pw').value;
+  const nw2 = document.getElementById('new-pw2').value;
+  if (cur !== DB.getAdminPw()) { toast('현재 비밀번호가 틀렸습니다', 'error'); return; }
+  if (!nw) { toast('새 비밀번호를 입력하세요', 'error'); return; }
+  if (nw !== nw2) { toast('새 비밀번호가 일치하지 않습니다', 'error'); return; }
+  DB.setAdminPw(nw);
+  toast('비밀번호가 변경되었습니다', 'success');
+  ['cur-pw','new-pw','new-pw2'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ===== UTILS =====
+function populateMemberSelects() {
+  const members = DB.getMembers();
+  const opts = '<option value="">선택하세요</option>' + members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  const noFilterOpts = '<option value="">전체 회원</option>' + members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  const ids = ['s-member','sch-member','pt-member'];
+  const filterIds = ['cal-filter-member','session-filter-member','sch-filter-member','csv-member'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = opts; });
+  filterIds.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = noFilterOpts; });
+}
+
+function statusBadge(status) {
+  const map = { scheduled: ['badge-purple','예정'], completed: ['badge-green','완료'], cancelled: ['badge-gray','취소'] };
+  const [cls, text] = map[status] || ['badge-gray', status];
+  return `<span class="badge ${cls}">${text}</span>`;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
+}
+
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+function logout() { DB.logout(); location.href = 'index.html'; }
+
+function toast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = 'toast-item ' + type;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('active'); });
+});
+</script>
+</body>
+</html>

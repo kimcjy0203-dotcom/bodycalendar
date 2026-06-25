@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>바디캘린더 - 회원 로그인</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+.reset-panel { display: none; }
+.reset-panel.active { display: flex; flex-direction: column; gap: 14px; }
+.login-form-inner { display: flex; flex-direction: column; gap: 14px; }
+.login-form-inner.hidden { display: none; }
+.back-link { font-size: 0.8rem; color: var(--primary); cursor: pointer; text-align: center; }
+.back-link:hover { text-decoration: underline; }
+.step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+.step-dot.active { background: var(--primary); }
+</style>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box">
+    <div class="login-header" style="background:linear-gradient(135deg,#8B7FEE 0%,#5BAFF7 100%)">
+      <div class="login-logo">🏋️</div>
+      <div class="login-title">바디캘린더</div>
+      <div class="login-subtitle">회원 전용 페이지</div>
+    </div>
+
+    <div class="login-form">
+
+      <!-- 로그인 폼 -->
+      <div id="form-login" class="login-form-inner">
+        <div class="input-group">
+          <label>이름</label>
+          <input class="input" type="text" id="member-name" placeholder="이름을 입력하세요" autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label>비밀번호</label>
+          <input class="input" type="password" id="member-pw" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')loginMember()">
+        </div>
+        <button class="login-btn" onclick="loginMember()">로그인</button>
+        <p class="back-link" onclick="showReset()">비밀번호를 잊으셨나요?</p>
+      </div>
+
+      <!-- 비밀번호 재설정 Step 1: 이름 확인 -->
+      <div id="form-reset-1" class="login-form-inner hidden">
+        <div style="text-align:center;padding:8px 0">
+          <div style="font-size:1rem;font-weight:700;margin-bottom:4px">비밀번호 재설정</div>
+          <div style="font-size:0.8rem;color:var(--text-2)">등록된 이름을 입력하세요</div>
+          <div class="flex gap-2 items-center" style="justify-content:center;margin-top:10px">
+            <div class="step-dot active"></div>
+            <div class="step-dot"></div>
+            <div class="step-dot"></div>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>이름</label>
+          <input class="input" type="text" id="reset-name" placeholder="등록된 이름" autocomplete="off">
+        </div>
+        <button class="login-btn" onclick="resetStep1()">다음</button>
+        <p class="back-link" onclick="showLogin()">← 로그인으로 돌아가기</p>
+      </div>
+
+      <!-- 비밀번호 재설정 Step 2: 본인 확인 -->
+      <div id="form-reset-2" class="login-form-inner hidden">
+        <div style="text-align:center;padding:8px 0">
+          <div style="font-size:1rem;font-weight:700;margin-bottom:4px">본인 확인</div>
+          <div style="font-size:0.8rem;color:var(--text-2)">등록된 전화번호 뒷 4자리를 입력하세요</div>
+          <div class="flex gap-2 items-center" style="justify-content:center;margin-top:10px">
+            <div class="step-dot"></div>
+            <div class="step-dot active"></div>
+            <div class="step-dot"></div>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>전화번호 뒷 4자리</label>
+          <input class="input" type="tel" id="reset-phone" placeholder="예: 1234" maxlength="4" onkeydown="if(event.key==='Enter')resetStep2()">
+        </div>
+        <button class="login-btn" onclick="resetStep2()">확인</button>
+        <p class="back-link" onclick="showReset()">← 이전으로</p>
+      </div>
+
+      <!-- 비밀번호 재설정 Step 3: 새 비밀번호 -->
+      <div id="form-reset-3" class="login-form-inner hidden">
+        <div style="text-align:center;padding:8px 0">
+          <div style="font-size:1rem;font-weight:700;margin-bottom:4px">새 비밀번호 설정</div>
+          <div style="font-size:0.8rem;color:var(--text-2)" id="reset-greeting"></div>
+          <div class="flex gap-2 items-center" style="justify-content:center;margin-top:10px">
+            <div class="step-dot"></div>
+            <div class="step-dot"></div>
+            <div class="step-dot active"></div>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>새 비밀번호</label>
+          <input class="input" type="password" id="reset-new-pw" placeholder="새 비밀번호">
+        </div>
+        <div class="input-group">
+          <label>새 비밀번호 확인</label>
+          <input class="input" type="password" id="reset-new-pw2" placeholder="비밀번호 재입력" onkeydown="if(event.key==='Enter')resetStep3()">
+        </div>
+        <button class="login-btn" onclick="resetStep3()">비밀번호 변경</button>
+        <p class="back-link" onclick="showLogin()">← 로그인으로 돌아가기</p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/db.js"></script>
+<script>
+DB.init();
+
+if (DB.getRole() === 'member') location.href = 'member.html';
+if (DB.getRole() === 'admin') location.href = 'admin.html';
+
+let resetTargetId = null;
+
+function showLogin() {
+  hide('form-reset-1'); hide('form-reset-2'); hide('form-reset-3');
+  show('form-login');
+}
+
+function showReset() {
+  hide('form-login'); hide('form-reset-2'); hide('form-reset-3');
+  show('form-reset-1');
+  document.getElementById('reset-name').value = '';
+  document.getElementById('reset-phone').value = '';
+}
+
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+function loginMember() {
+  const name = document.getElementById('member-name').value.trim();
+  const pw = document.getElementById('member-pw').value;
+  if (!name || !pw) { toast('이름과 비밀번호를 입력하세요', 'error'); return; }
+  const m = DB.loginMember(name, pw);
+  if (m) { toast('환영합니다, ' + m.name + '님!', 'success'); setTimeout(() => location.href = 'member.html', 700); }
+  else toast('이름 또는 비밀번호가 틀렸습니다', 'error');
+}
+
+function resetStep1() {
+  const name = document.getElementById('reset-name').value.trim();
+  if (!name) { toast('이름을 입력하세요', 'error'); return; }
+  const m = DB.getMemberByName(name);
+  if (!m) { toast('등록된 회원이 아닙니다', 'error'); return; }
+  if (!m.phone) { toast('전화번호가 등록되어 있지 않습니다\n트레이너에게 문의하세요', 'error'); return; }
+  resetTargetId = m.id;
+  hide('form-reset-1');
+  show('form-reset-2');
+}
+
+function resetStep2() {
+  const phone = document.getElementById('reset-phone').value.trim();
+  if (!phone || phone.length !== 4) { toast('전화번호 뒷 4자리를 입력하세요', 'error'); return; }
+  const m = DB.getMember(resetTargetId);
+  const last4 = (m.phone || '').replace(/[^0-9]/g, '').slice(-4);
+  if (phone !== last4) { toast('전화번호가 일치하지 않습니다', 'error'); return; }
+  document.getElementById('reset-greeting').textContent = `${m.name}님, 새 비밀번호를 설정하세요`;
+  hide('form-reset-2');
+  show('form-reset-3');
+}
+
+function resetStep3() {
+  const pw = document.getElementById('reset-new-pw').value;
+  const pw2 = document.getElementById('reset-new-pw2').value;
+  if (!pw) { toast('새 비밀번호를 입력하세요', 'error'); return; }
+  if (pw !== pw2) { toast('비밀번호가 일치하지 않습니다', 'error'); return; }
+  if (pw.length < 4) { toast('비밀번호는 4자 이상이어야 합니다', 'error'); return; }
+  DB.updateMember(resetTargetId, { password: pw });
+  toast('비밀번호가 변경되었습니다! 로그인하세요', 'success');
+  setTimeout(() => {
+    resetTargetId = null;
+    showLogin();
+    document.getElementById('reset-new-pw').value = '';
+    document.getElementById('reset-new-pw2').value = '';
+  }, 1200);
+}
+
+function toast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = 'toast-item ' + type;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+</script>
+</body>
+</html>

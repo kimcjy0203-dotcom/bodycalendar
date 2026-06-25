@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>바디캘린더</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+.login-panel { display: none; }
+.login-panel.active { display: flex; flex-direction: column; gap: 14px; }
+</style>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box">
+    <div class="login-header">
+      <div class="login-logo">🏋️</div>
+      <div class="login-title">바디캘린더</div>
+      <div class="login-subtitle">PT 세션 & 운동 관리 플랫폼</div>
+    </div>
+
+    <div class="login-tabs">
+      <div class="login-tab active" onclick="switchTab('member')">회원 로그인</div>
+      <div class="login-tab" onclick="switchTab('admin')">관리자 로그인</div>
+    </div>
+
+    <!-- 회원 로그인 -->
+    <div class="login-form">
+      <div id="panel-member" class="login-panel active">
+        <div class="input-group">
+          <label>이름</label>
+          <input class="input" type="text" id="member-name" placeholder="이름을 입력하세요" autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label>비밀번호</label>
+          <input class="input" type="password" id="member-pw" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')loginMember()">
+        </div>
+        <button class="login-btn" onclick="loginMember()">로그인</button>
+        <p class="login-hint">계정이 없으신가요? 트레이너에게 문의하세요.</p>
+      </div>
+
+      <!-- 관리자 로그인 -->
+      <div id="panel-admin" class="login-panel">
+        <div class="input-group">
+          <label>관리자 비밀번호</label>
+          <input class="input" type="password" id="admin-pw" placeholder="관리자 비밀번호 입력" onkeydown="if(event.key==='Enter')loginAdmin()">
+        </div>
+        <button class="login-btn" onclick="loginAdmin()">관리자 로그인</button>
+        <p class="login-hint">초기 비밀번호: 0000</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/db.js"></script>
+<script>
+DB.init();
+
+// Already logged in?
+const role = DB.getRole();
+if (role === 'admin') location.href = 'admin.html';
+else if (role === 'member') location.href = 'member.html';
+
+function switchTab(tab) {
+  document.querySelectorAll('.login-tab').forEach((el, i) => {
+    el.classList.toggle('active', (i === 0 && tab === 'member') || (i === 1 && tab === 'admin'));
+  });
+  document.getElementById('panel-member').classList.toggle('active', tab === 'member');
+  document.getElementById('panel-admin').classList.toggle('active', tab === 'admin');
+}
+
+function loginMember() {
+  const name = document.getElementById('member-name').value.trim();
+  const pw = document.getElementById('member-pw').value;
+  if (!name || !pw) { toast('이름과 비밀번호를 입력하세요', 'error'); return; }
+  const m = DB.loginMember(name, pw);
+  if (m) { toast('환영합니다, ' + m.name + '님!', 'success'); setTimeout(() => location.href = 'member.html', 700); }
+  else toast('이름 또는 비밀번호가 틀렸습니다', 'error');
+}
+
+function loginAdmin() {
+  const pw = document.getElementById('admin-pw').value;
+  if (!pw) { toast('비밀번호를 입력하세요', 'error'); return; }
+  if (DB.loginAdmin(pw)) { toast('관리자로 로그인되었습니다', 'success'); setTimeout(() => location.href = 'admin.html', 700); }
+  else toast('비밀번호가 틀렸습니다', 'error');
+}
+
+function toast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = 'toast-item ' + type;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+</script>
+</body>
+</html>
