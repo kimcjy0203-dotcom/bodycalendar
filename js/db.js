@@ -21,24 +21,26 @@ function _toArr(obj) { return obj ? Object.values(obj) : []; }
 const CACHE = {
   members: [], sessions: [], schedules: [],
   pt_packages: [], weight_logs: [], routines: [], notices: [],
+  pkg_templates: [],
   admin_pw: '0000'
 };
 
 const DB = {
   async init() {
-    const [members, sessions, schedules, pt_packages, weight_logs, routines, notices, config] = await Promise.all([
+    const [members, sessions, schedules, pt_packages, weight_logs, routines, notices, pkg_templates, config] = await Promise.all([
       _get('members'), _get('sessions'), _get('schedules'),
       _get('pt_packages'), _get('weight_logs'), _get('routines'),
-      _get('notices'), _get('config')
+      _get('notices'), _get('pkg_templates'), _get('config')
     ]);
-    CACHE.members    = _toArr(members);
-    CACHE.sessions   = _toArr(sessions);
-    CACHE.schedules  = _toArr(schedules);
-    CACHE.pt_packages = _toArr(pt_packages);
-    CACHE.weight_logs = _toArr(weight_logs);
-    CACHE.routines   = _toArr(routines);
-    CACHE.notices    = _toArr(notices);
-    CACHE.admin_pw   = config?.admin_pw || '0000';
+    CACHE.members       = _toArr(members);
+    CACHE.sessions      = _toArr(sessions);
+    CACHE.schedules     = _toArr(schedules);
+    CACHE.pt_packages   = _toArr(pt_packages);
+    CACHE.weight_logs   = _toArr(weight_logs);
+    CACHE.routines      = _toArr(routines);
+    CACHE.notices       = _toArr(notices);
+    CACHE.pkg_templates = _toArr(pkg_templates);
+    CACHE.admin_pw      = config?.admin_pw || '0000';
   },
 
   uuid() { return Date.now().toString(36) + Math.random().toString(36).substr(2); },
@@ -187,6 +189,15 @@ const DB = {
     });
     return Object.values(stats).sort((a,b) => b.count-a.count);
   },
+
+  // 패키지 템플릿
+  getPkgTemplates() { return CACHE.pkg_templates; },
+  addPkgTemplate(data) { const t = { id: this.uuid(), ...data }; CACHE.pkg_templates.push(t); _set(`pkg_templates/${t.id}`, t); return t; },
+  updatePkgTemplate(id, updates) {
+    const i = CACHE.pkg_templates.findIndex(t => t.id === id);
+    if (i !== -1) { CACHE.pkg_templates[i] = { ...CACHE.pkg_templates[i], ...updates }; _set(`pkg_templates/${id}`, CACHE.pkg_templates[i]); }
+  },
+  deletePkgTemplate(id) { CACHE.pkg_templates = CACHE.pkg_templates.filter(t => t.id !== id); _del(`pkg_templates/${id}`); },
 
   exportBackup() {
     return JSON.stringify({ members:CACHE.members, sessions:CACHE.sessions, schedules:CACHE.schedules, pt_packages:CACHE.pt_packages, weight_logs:CACHE.weight_logs, routines:CACHE.routines, notices:CACHE.notices, admin_pw:CACHE.admin_pw }, null, 2);
