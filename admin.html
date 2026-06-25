@@ -214,12 +214,20 @@
               <div class="card-body" id="member-detail-stats"></div>
             </div>
           </div>
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">세션 이력</span>
-              <button class="btn btn-primary btn-sm" onclick="openSessionModalForMember()">+ 세션 기록</button>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">🏋️ PT 레슨 이력</span>
+                <button class="btn btn-primary btn-sm" onclick="openSessionModalForMember()">+ 세션 기록</button>
+              </div>
+              <div class="card-body" id="member-detail-sessions" style="min-height:120px;max-height:400px;overflow-y:auto"></div>
             </div>
-            <div class="card-body" id="member-detail-sessions" style="min-height:200px;max-height:500px;overflow-y:auto"></div>
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">✍️ 개인 운동 기록</span>
+              </div>
+              <div class="card-body" id="member-detail-personal" style="min-height:80px;max-height:300px;overflow-y:auto"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1190,6 +1198,22 @@ function showMemberDetail(memberId) {
         </div>
         <span class="badge ${s.attendance===false?'badge-red':'badge-green'}">${s.attendance===false?'결석':'출석'}</span>
       </div>`).join('')}</div>`;
+  }
+
+  // 개인 운동 기록
+  const personalLogs = DB.getMemberPersonalLogs(memberId);
+  const personalEl = document.getElementById('member-detail-personal');
+  if (!personalLogs.length) {
+    personalEl.innerHTML = '<div style="text-align:center;padding:16px 0;color:var(--text-3);font-size:0.85rem">회원이 기록한 개인 운동이 없습니다</div>';
+  } else {
+    personalEl.innerHTML = personalLogs.map(l => `
+      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div class="flex items-center justify-between">
+          <div style="font-weight:600;font-size:0.9rem">${l.title||'개인 운동'} <span style="font-size:0.75rem;color:var(--text-2);font-weight:400">${formatDate(l.date)}</span></div>
+        </div>
+        ${(l.exercises||[]).length ? `<div style="font-size:0.82rem;color:var(--text-2);margin-top:4px">${l.exercises.map(e=>`${e.name} ${e.sets}세트${e.weight?' ('+e.weight+')':''}`).join(' · ')}</div>` : ''}
+        ${l.note ? `<div style="font-size:0.8rem;color:var(--text-3);margin-top:4px">${l.note}</div>` : ''}
+      </div>`).join('');
   }
 }
 

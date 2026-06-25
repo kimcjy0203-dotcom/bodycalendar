@@ -21,16 +21,16 @@ function _toArr(obj) { return obj ? Object.values(obj) : []; }
 const CACHE = {
   members: [], sessions: [], schedules: [],
   pt_packages: [], weight_logs: [], routines: [], notices: [],
-  pkg_templates: [],
+  pkg_templates: [], personal_logs: [],
   admin_pw: '0000'
 };
 
 const DB = {
   async init() {
-    const [members, sessions, schedules, pt_packages, weight_logs, routines, notices, pkg_templates, config] = await Promise.all([
+    const [members, sessions, schedules, pt_packages, weight_logs, routines, notices, pkg_templates, personal_logs, config] = await Promise.all([
       _get('members'), _get('sessions'), _get('schedules'),
       _get('pt_packages'), _get('weight_logs'), _get('routines'),
-      _get('notices'), _get('pkg_templates'), _get('config')
+      _get('notices'), _get('pkg_templates'), _get('personal_logs'), _get('config')
     ]);
     CACHE.members       = _toArr(members);
     CACHE.sessions      = _toArr(sessions);
@@ -40,6 +40,7 @@ const DB = {
     CACHE.routines      = _toArr(routines);
     CACHE.notices       = _toArr(notices);
     CACHE.pkg_templates = _toArr(pkg_templates);
+    CACHE.personal_logs = _toArr(personal_logs);
     CACHE.admin_pw      = config?.admin_pw || '0000';
   },
 
@@ -189,6 +190,16 @@ const DB = {
     });
     return Object.values(stats).sort((a,b) => b.count-a.count);
   },
+
+  // 개인 운동 기록
+  getPersonalLogs() { return CACHE.personal_logs; },
+  getMemberPersonalLogs(memberId) { return CACHE.personal_logs.filter(l => l.memberId === memberId).sort((a,b) => b.date.localeCompare(a.date)); },
+  addPersonalLog(data) { const l = { id: this.uuid(), createdAt: new Date().toISOString(), ...data }; CACHE.personal_logs.push(l); _set(`personal_logs/${l.id}`, l); return l; },
+  updatePersonalLog(id, updates) {
+    const i = CACHE.personal_logs.findIndex(l => l.id === id);
+    if (i !== -1) { CACHE.personal_logs[i] = { ...CACHE.personal_logs[i], ...updates }; _set(`personal_logs/${id}`, CACHE.personal_logs[i]); }
+  },
+  deletePersonalLog(id) { CACHE.personal_logs = CACHE.personal_logs.filter(l => l.id !== id); _del(`personal_logs/${id}`); },
 
   // 패키지 템플릿
   getPkgTemplates() { return CACHE.pkg_templates; },

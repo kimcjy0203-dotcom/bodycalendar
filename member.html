@@ -51,7 +51,8 @@
   <!-- NAV TABS -->
   <div class="member-nav">
     <div class="member-nav-item active" onclick="switchTab('calendar')">📅 캘린더</div>
-    <div class="member-nav-item" onclick="switchTab('sessions')">💪 세션 기록</div>
+    <div class="member-nav-item" onclick="switchTab('sessions')">🏋️ 레슨</div>
+    <div class="member-nav-item" onclick="switchTab('personal')">✍️ 개인운동</div>
     <div class="member-nav-item" onclick="switchTab('stats')">📊 통계</div>
     <div class="member-nav-item" onclick="switchTab('profile')">👤 내 정보</div>
   </div>
@@ -109,6 +110,15 @@
         <input class="input" type="month" id="session-month-filter" style="width:145px" onchange="renderSessionsTab()">
       </div>
       <div id="sessions-list"></div>
+    </div>
+
+    <!-- PERSONAL WORKOUT TAB -->
+    <div id="tab-personal" style="display:none">
+      <div class="flex items-center justify-between mb-4">
+        <h2 style="font-size:1rem;font-weight:700">개인 운동 기록</h2>
+        <button class="btn btn-primary btn-sm" onclick="openPersonalLogModal()">+ 기록하기</button>
+      </div>
+      <div id="personal-log-list"></div>
     </div>
 
     <!-- STATS TAB -->
@@ -218,6 +228,52 @@
   </div>
 </div>
 
+<!-- PERSONAL LOG MODAL -->
+<div class="modal-overlay" id="modal-personal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="pl-modal-title">개인 운동 기록</span>
+      <button class="close-btn" onclick="closePersonalModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pl-edit-id">
+      <div class="grid-2">
+        <div class="input-group">
+          <label>날짜</label>
+          <input class="input" type="date" id="pl-date">
+        </div>
+        <div class="input-group">
+          <label>제목 (선택)</label>
+          <input class="input" type="text" id="pl-title" placeholder="예: 하체 데이">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>운동 목록</label>
+        <div id="pl-exercises" style="display:flex;flex-direction:column;gap:8px;margin-top:4px"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addPlExRow()" style="margin-top:8px;align-self:flex-start">+ 운동 추가</button>
+      </div>
+      <div class="input-group">
+        <label>메모</label>
+        <textarea class="input" id="pl-note" rows="2" placeholder="오늘의 운동 메모" style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closePersonalModal()">취소</button>
+      <button class="btn btn-primary" onclick="savePersonalLog()">저장</button>
+    </div>
+  </div>
+</div>
+
+<datalist id="exercise-list">
+  <option value="스쿼트"><option value="레그프레스"><option value="런지"><option value="힙쓰러스트"><option value="데드리프트"><option value="루마니안 데드리프트">
+  <option value="벤치프레스"><option value="인클라인 벤치프레스"><option value="덤벨 플라이"><option value="딥스"><option value="푸시업">
+  <option value="풀업"><option value="랫풀다운"><option value="시티드 케이블 로우"><option value="바벨 로우"><option value="원암 덤벨 로우">
+  <option value="오버헤드 프레스"><option value="덤벨 숄더프레스"><option value="사이드 레터럴 레이즈"><option value="리어 델트 플라이">
+  <option value="바벨 컬"><option value="덤벨 컬"><option value="해머 컬"><option value="트라이셉스 푸시다운"><option value="스컬크러셔">
+  <option value="플랭크"><option value="크런치"><option value="레그레이즈"><option value="러시안 트위스트">
+  <option value="케틀벨 스윙"><option value="버피"><option value="트레드밀"><option value="싸이클"><option value="로잉머신">
+</datalist>
+
 <div id="toast"></div>
 <script src="js/db.js"></script>
 <script>
@@ -273,13 +329,14 @@ function renderNotices() {
 
 // ===== TABS =====
 function switchTab(name) {
-  ['calendar','sessions','stats','profile'].forEach(t => {
+  ['calendar','sessions','personal','stats','profile'].forEach(t => {
     document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none';
   });
   document.querySelectorAll('.member-nav-item').forEach((el, i) => {
-    el.classList.toggle('active', (['calendar','sessions','stats','profile'][i]) === name);
+    el.classList.toggle('active', (['calendar','sessions','personal','stats','profile'][i]) === name);
   });
   if (name === 'sessions') renderSessionsTab();
+  if (name === 'personal') renderPersonalLogs();
   if (name === 'stats') renderStatsTab();
   if (name === 'profile') { renderProfile(); renderWeightLog(); }
 }
@@ -689,6 +746,98 @@ function toast(msg, type='') {
 document.getElementById('modal-session').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-session')) closeModal();
 });
+document.getElementById('modal-personal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-personal')) closePersonalModal();
+});
+
+// ===== 개인 운동 기록 =====
+function renderPersonalLogs() {
+  const logs = DB.getMemberPersonalLogs(memberId);
+  const el = document.getElementById('personal-log-list');
+  if (!logs.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-3)"><div style="font-size:2rem;margin-bottom:8px">✍️</div><div>기록이 없습니다<br><span style="font-size:0.85rem">+ 기록하기 버튼으로 시작하세요</span></div></div>';
+    return;
+  }
+  el.innerHTML = logs.map(l => `
+    <div class="card mb-3">
+      <div class="card-header" style="padding:12px 16px">
+        <div>
+          <div style="font-weight:700;font-size:0.95rem">${l.title || '개인 운동'}</div>
+          <div style="font-size:0.78rem;color:var(--text-2);margin-top:2px">${formatDate(l.date)}</div>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="editPersonalLog('${l.id}')">✏️</button>
+          <button class="btn btn-red btn-sm btn-icon" onclick="deletePersonalLog('${l.id}')">🗑</button>
+        </div>
+      </div>
+      ${(l.exercises||[]).length ? `<div class="card-body" style="padding:10px 16px">
+        ${(l.exercises||[]).map(e => `<div style="font-size:0.85rem;padding:4px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+          <span style="font-weight:600">${e.name}</span>
+          <span style="color:var(--text-2)">${e.sets}세트${e.weight ? ' · ' + e.weight : ''}</span>
+        </div>`).join('')}
+        ${l.note ? `<div style="font-size:0.82rem;color:var(--text-2);margin-top:8px">${l.note}</div>` : ''}
+      </div>` : l.note ? `<div class="card-body" style="padding:10px 16px;font-size:0.85rem;color:var(--text-2)">${l.note}</div>` : ''}
+    </div>`).join('');
+}
+
+let plExCount = 0;
+function addPlExRow(name='', sets='', weight='') {
+  const id = ++plExCount;
+  const row = document.createElement('div');
+  row.id = `pl-ex-${id}`;
+  row.style.cssText = 'display:flex;gap:6px;align-items:center';
+  row.innerHTML = `
+    <input class="input" type="text" list="exercise-list" placeholder="운동 이름" value="${name}" style="flex:2;min-width:0">
+    <input class="input" type="number" placeholder="세트" value="${sets}" min="1" style="width:60px;text-align:center">
+    <input class="input" type="text" placeholder="무게/강도" value="${weight}" style="width:90px">
+    <button class="btn btn-ghost btn-sm btn-icon" onclick="document.getElementById('pl-ex-${id}').remove()">✕</button>`;
+  document.getElementById('pl-exercises').appendChild(row);
+}
+
+function openPersonalLogModal(log) {
+  plExCount = 0;
+  document.getElementById('pl-edit-id').value = log?.id || '';
+  document.getElementById('pl-modal-title').textContent = log ? '개인 운동 수정' : '개인 운동 기록';
+  document.getElementById('pl-date').value = log?.date || today.toISOString().split('T')[0];
+  document.getElementById('pl-title').value = log?.title || '';
+  document.getElementById('pl-note').value = log?.note || '';
+  document.getElementById('pl-exercises').innerHTML = '';
+  if (log?.exercises?.length) log.exercises.forEach(e => addPlExRow(e.name, e.sets, e.weight));
+  else addPlExRow();
+  document.getElementById('modal-personal').classList.add('active');
+}
+
+function closePersonalModal() {
+  document.getElementById('modal-personal').classList.remove('active');
+}
+
+function editPersonalLog(id) {
+  const log = DB.getPersonalLogs().find(l => l.id === id);
+  if (log) openPersonalLogModal(log);
+}
+
+function deletePersonalLog(id) {
+  if (!confirm('이 기록을 삭제하시겠습니까?')) return;
+  DB.deletePersonalLog(id);
+  renderPersonalLogs();
+  toast('삭제되었습니다');
+}
+
+function savePersonalLog() {
+  const date = document.getElementById('pl-date').value;
+  if (!date) { toast('날짜를 선택하세요', 'error'); return; }
+  const exercises = [...document.getElementById('pl-exercises').querySelectorAll('div[id^="pl-ex-"]')].map(row => {
+    const inputs = row.querySelectorAll('input');
+    return { name: inputs[0].value.trim(), sets: parseInt(inputs[1].value)||1, weight: inputs[2].value.trim() };
+  }).filter(e => e.name);
+  const data = { memberId, date, title: document.getElementById('pl-title').value.trim(), exercises, note: document.getElementById('pl-note').value.trim() };
+  const editId = document.getElementById('pl-edit-id').value;
+  if (editId) DB.updatePersonalLog(editId, data);
+  else DB.addPersonalLog(data);
+  closePersonalModal();
+  renderPersonalLogs();
+  toast('기록이 저장되었습니다', 'success');
+}
 </script>
 </body>
 </html>
