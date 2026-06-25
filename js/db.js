@@ -9,6 +9,7 @@ const firebaseConfig = {
 
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const fsDb = firebase.firestore();
+fsDb.settings({ experimentalForceLongPolling: true, merge: true });
 
 // 인메모리 캐시 (Firestore 로드 후 채워짐)
 const CACHE = {
