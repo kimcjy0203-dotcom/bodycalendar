@@ -815,7 +815,7 @@ DB.init().then(() => {
   document.getElementById('app').style.display = '';
 }).catch(e => {
   console.error(e);
-  document.getElementById('loading').innerHTML = '<div class="spinner"></div><div class="loading-text" style="color:var(--red)">서버 연결 실패. 새로고침 해주세요.</div>';
+  document.getElementById('loading').innerHTML = `<div class="loading-text" style="color:var(--red);font-weight:700">Firebase 연결 실패</div><div class="loading-text" style="font-size:0.75rem;max-width:280px;text-align:center;word-break:break-all">${e && e.message ? e.message : String(e)}</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer">새로고침</button>`;
 });
 
 // ===== PANEL =====
