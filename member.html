@@ -114,11 +114,7 @@
 
     <!-- PERSONAL WORKOUT TAB -->
     <div id="tab-personal" style="display:none">
-      <div class="flex items-center justify-between mb-4">
-        <h2 style="font-size:1rem;font-weight:700">개인 운동 기록</h2>
-        <button class="btn btn-primary btn-sm" onclick="openPersonalLogModal()">+ 기록하기</button>
-      </div>
-      <div id="personal-log-list"></div>
+      <div id="weekly-log-list"></div>
     </div>
 
     <!-- STATS TAB -->
@@ -267,7 +263,7 @@
 <datalist id="exercise-list"></datalist>
 
 <div id="toast"></div>
-<script src="js/db.js?v=2"></script>
+<script src="js/db.js?v=3"></script>
 <script>
 if (DB.getRole() !== 'member') { location.href = 'index.html'; }
 
@@ -745,33 +741,104 @@ document.getElementById('modal-personal').addEventListener('click', e => {
 });
 
 // ===== 개인 운동 기록 =====
+// 컨디션 옵션
+const CONDITION_OPTIONS = [
+  { value: '최고', emoji: '💪', label: '최고' },
+  { value: '좋음', emoji: '😊', label: '좋음' },
+  { value: '보통', emoji: '😐', label: '보통' },
+  { value: '피곤', emoji: '😫', label: '피곤' },
+  { value: '힘듦', emoji: '😓', label: '힘듦' }
+];
+
+function getWeekStart(date) {
+  const d = new Date(date + 'T00:00:00');
+  d.setDate(d.getDate() - d.getDay() + 1); // 월요일 기준
+  return d.toISOString().split('T')[0];
+}
+
 function renderPersonalLogs() {
-  const logs = DB.getMemberPersonalLogs(memberId);
-  const el = document.getElementById('personal-log-list');
-  if (!logs.length) {
-    el.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-3)"><div style="font-size:2rem;margin-bottom:8px">✍️</div><div>기록이 없습니다<br><span style="font-size:0.85rem">+ 기록하기 버튼으로 시작하세요</span></div></div>';
-    return;
+  const el = document.getElementById('weekly-log-list');
+
+  // 최근 12주 + 기록 있는 주 모두 포함
+  const weeks = new Set();
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i * 7);
+    weeks.add(getWeekStart(d.toISOString().split('T')[0]));
   }
-  el.innerHTML = logs.map(l => `
-    <div class="card mb-3">
-      <div class="card-header" style="padding:12px 16px">
-        <div>
-          <div style="font-weight:700;font-size:0.95rem">${l.title || '개인 운동'}</div>
-          <div style="font-size:0.78rem;color:var(--text-2);margin-top:2px">${formatDate(l.date)}</div>
+  // 과거 기록이 있는 주도 추가
+  DB.getMemberPersonalLogs(memberId).forEach(l => weeks.add(getWeekStart(l.date)));
+
+  const sorted = [...weeks].sort((a, b) => b.localeCompare(a));
+
+  el.innerHTML = sorted.map(ws => {
+    const we = new Date(ws + 'T00:00:00');
+    we.setDate(we.getDate() + 6);
+    const wsDate = new Date(ws + 'T00:00:00');
+    const label = `${wsDate.toLocaleDateString('ko-KR', {month:'long', day:'numeric'})} ~ ${we.toLocaleDateString('ko-KR', {month:'long', day:'numeric'})}`;
+    const isCurrentWeek = ws === getWeekStart(today.toISOString().split('T')[0]);
+
+    const checkin = DB.getWeeklyCheckin(memberId, ws);
+    const logs = DB.getMemberPersonalLogs(memberId).filter(l => getWeekStart(l.date) === ws);
+
+    const conditionBtns = CONDITION_OPTIONS.map(o => `
+      <button onclick="setCondition('${ws}','${o.value}')"
+        style="padding:6px 10px;border-radius:20px;border:1.5px solid ${checkin?.condition===o.value?'var(--primary)':'var(--border)'};background:${checkin?.condition===o.value?'var(--primary-light)':'#fff'};cursor:pointer;font-size:0.8rem;transition:all 0.12s">
+        ${o.emoji} ${o.label}
+      </button>`).join('');
+
+    const logsHtml = logs.length ? logs.map(l => `
+      <div style="background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-weight:700;font-size:0.88rem">${l.title||'개인 운동'} <span style="font-weight:400;color:var(--text-2);font-size:0.78rem">${new Date(l.date+'T00:00:00').toLocaleDateString('ko-KR',{month:'short',day:'numeric',weekday:'short'})}</span></span>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="editPersonalLog('${l.id}')">✏️</button>
+            <button class="btn btn-red btn-sm btn-icon" onclick="deletePersonalLog('${l.id}')">🗑</button>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="editPersonalLog('${l.id}')">✏️</button>
-          <button class="btn btn-red btn-sm btn-icon" onclick="deletePersonalLog('${l.id}')">🗑</button>
+        ${(l.exercises||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(l.exercises||[]).map(e=>`<span style="font-size:0.75rem;background:var(--primary-light);color:var(--primary);padding:2px 7px;border-radius:10px">${e.name} ${e.sets}세트${e.weight?' · '+e.weight:''}</span>`).join('')}</div>`:''}
+        ${l.note?`<div style="font-size:0.78rem;color:var(--text-2)">${l.note}</div>`:''}
+      </div>`).join('') : '';
+
+    return `
+      <div class="card mb-3" style="${isCurrentWeek?'border:2px solid var(--primary)':''}">
+        <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleWeekCard('wk-${ws}')">
+          <div>
+            ${isCurrentWeek?'<span style="font-size:0.7rem;font-weight:700;color:var(--primary);background:var(--primary-light);padding:2px 7px;border-radius:10px;margin-right:6px">이번 주</span>':''}
+            <span style="font-size:0.85rem;font-weight:700">${label}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${checkin?.condition?`<span style="font-size:0.85rem">${CONDITION_OPTIONS.find(o=>o.value===checkin.condition)?.emoji||''}</span>`:''}
+            ${logs.length?`<span style="font-size:0.75rem;color:var(--primary);font-weight:600">${logs.length}개</span>`:''}
+            <span id="wk-arrow-${ws}" style="color:var(--text-3);transition:transform 0.2s">${isCurrentWeek?'▲':'▼'}</span>
+          </div>
         </div>
-      </div>
-      ${(l.exercises||[]).length ? `<div class="card-body" style="padding:10px 16px">
-        ${(l.exercises||[]).map(e => `<div style="font-size:0.85rem;padding:4px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
-          <span style="font-weight:600">${e.name}</span>
-          <span style="color:var(--text-2)">${e.sets}세트${e.weight ? ' · ' + e.weight : ''}</span>
-        </div>`).join('')}
-        ${l.note ? `<div style="font-size:0.82rem;color:var(--text-2);margin-top:8px">${l.note}</div>` : ''}
-      </div>` : l.note ? `<div class="card-body" style="padding:10px 16px;font-size:0.85rem;color:var(--text-2)">${l.note}</div>` : ''}
-    </div>`).join('');
+        <div id="wk-${ws}" style="padding:0 16px 14px;${isCurrentWeek?'':'display:none'}">
+          <div style="margin-bottom:10px">
+            <div style="font-size:0.78rem;font-weight:600;color:var(--text-2);margin-bottom:6px">이번 주 컨디션</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">${conditionBtns}</div>
+          </div>
+          <div id="logs-${ws}">${logsHtml}</div>
+          <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="openPersonalLogModal(null,'${ws}')">+ 운동 기록 추가</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleWeekCard(id) {
+  const el = document.getElementById(id);
+  const ws = id.replace('wk-','');
+  const arrow = document.getElementById('wk-arrow-'+ws);
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : '';
+  if (arrow) arrow.textContent = open ? '▼' : '▲';
+}
+
+function setCondition(weekStart, condition) {
+  DB.setWeeklyCheckin(memberId, weekStart, condition);
+  renderPersonalLogs();
+  toast('컨디션이 저장되었습니다', 'success');
 }
 
 let plExCount = 0;
@@ -788,11 +855,13 @@ function addPlExRow(name='', sets='', weight='') {
   document.getElementById('pl-exercises').appendChild(row);
 }
 
-function openPersonalLogModal(log) {
+function openPersonalLogModal(log, weekStart) {
   plExCount = 0;
   document.getElementById('pl-edit-id').value = log?.id || '';
   document.getElementById('pl-modal-title').textContent = log ? '개인 운동 수정' : '개인 운동 기록';
-  document.getElementById('pl-date').value = log?.date || today.toISOString().split('T')[0];
+  // 주차 버튼에서 열 때 해당 주 월요일 날짜 사용
+  const defaultDate = weekStart ? weekStart : (log?.date || today.toISOString().split('T')[0]);
+  document.getElementById('pl-date').value = defaultDate;
   document.getElementById('pl-title').value = log?.title || '';
   document.getElementById('pl-note').value = log?.note || '';
   document.getElementById('pl-exercises').innerHTML = '';

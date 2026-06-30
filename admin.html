@@ -224,9 +224,9 @@
             </div>
             <div class="card">
               <div class="card-header">
-                <span class="card-title">✍️ 개인 운동 기록</span>
+                <span class="card-title">✍️ 주간 컨디션 · 개인 운동</span>
               </div>
-              <div class="card-body" id="member-detail-personal" style="min-height:80px;max-height:300px;overflow-y:auto"></div>
+              <div class="card-body" id="member-detail-personal" style="min-height:80px;max-height:400px;overflow-y:auto"></div>
             </div>
           </div>
         </div>
@@ -849,7 +849,7 @@
 </div>
 
 <div id="toast"></div>
-<script src="js/db.js?v=2"></script>
+<script src="js/db.js?v=3"></script>
 <script>
 if (DB.getRole() !== 'admin') { location.href = 'index.html'; }
 
@@ -1217,21 +1217,48 @@ function showMemberDetail(memberId) {
       </div>`).join('')}</div>`;
   }
 
-  // 개인 운동 기록
-  const personalLogs = DB.getMemberPersonalLogs(memberId);
+  // 주차별 컨디션 + 개인 운동 기록 리포트
   const personalEl = document.getElementById('member-detail-personal');
-  if (!personalLogs.length) {
-    personalEl.innerHTML = '<div style="text-align:center;padding:16px 0;color:var(--text-3);font-size:0.85rem">회원이 기록한 개인 운동이 없습니다</div>';
-  } else {
-    personalEl.innerHTML = personalLogs.map(l => `
-      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div class="flex items-center justify-between">
-          <div style="font-weight:600;font-size:0.9rem">${l.title||'개인 운동'} <span style="font-size:0.75rem;color:var(--text-2);font-weight:400">${formatDate(l.date)}</span></div>
-        </div>
-        ${(l.exercises||[]).length ? `<div style="font-size:0.82rem;color:var(--text-2);margin-top:4px">${l.exercises.map(e=>`${e.name} ${e.sets}세트${e.weight?' ('+e.weight+')':''}`).join(' · ')}</div>` : ''}
-        ${l.note ? `<div style="font-size:0.8rem;color:var(--text-3);margin-top:4px">${l.note}</div>` : ''}
-      </div>`).join('');
+  const adminConditionEmoji = { '최고':'💪','좋음':'😊','보통':'😐','피곤':'😫','힘듦':'😓' };
+
+  const weeks = new Set();
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i * 7);
+    weeks.add(adminGetWeekStart(d.toISOString().split('T')[0]));
   }
+  DB.getMemberPersonalLogs(memberId).forEach(l => weeks.add(adminGetWeekStart(l.date)));
+
+  const sorted = [...weeks].sort((a, b) => b.localeCompare(a));
+  const rows = sorted.map(ws => {
+    const we = new Date(ws + 'T00:00:00'); we.setDate(we.getDate() + 6);
+    const wsDate = new Date(ws + 'T00:00:00');
+    const rangeLabel = `${wsDate.toLocaleDateString('ko-KR',{month:'short',day:'numeric'})} ~ ${we.toLocaleDateString('ko-KR',{month:'short',day:'numeric'})}`;
+    const checkin = DB.getWeeklyCheckin(memberId, ws);
+    const logs = DB.getMemberPersonalLogs(memberId).filter(l => adminGetWeekStart(l.date) === ws);
+    if (!checkin && !logs.length) return '';
+
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:0.8rem;font-weight:700;color:var(--text-2)">${rangeLabel}</span>
+        ${checkin?.condition?`<span style="font-size:0.85rem" title="컨디션: ${checkin.condition}">${adminConditionEmoji[checkin.condition]||''} ${checkin.condition}</span>`:'<span style="font-size:0.75rem;color:var(--text-3)">컨디션 미입력</span>'}
+      </div>
+      ${logs.length ? logs.map(l=>`<div style="font-size:0.8rem;color:var(--text-2);padding:2px 0">
+        <span style="font-weight:600;color:var(--text-1)">${l.title||'개인 운동'}</span>
+        (${new Date(l.date+'T00:00:00').toLocaleDateString('ko-KR',{month:'short',day:'numeric',weekday:'short'})})
+        ${(l.exercises||[]).length?` — `+(l.exercises||[]).map(e=>`${e.name} ${e.sets}세트`).join(', '):''}
+      </div>`).join('') : '<div style="font-size:0.78rem;color:var(--text-3)">운동 기록 없음</div>'}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  personalEl.innerHTML = rows || '<div style="text-align:center;padding:16px 0;color:var(--text-3);font-size:0.85rem">아직 기록이 없습니다</div>';
+}
+
+function adminGetWeekStart(date) {
+  const d = new Date(date + 'T00:00:00');
+  d.setDate(d.getDate() - d.getDay() + 1);
+  return d.toISOString().split('T')[0];
 }
 
 function openSessionModalForMember() {

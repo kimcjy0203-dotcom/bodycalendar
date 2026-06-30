@@ -41,16 +41,16 @@ function _toArr(obj) { return obj ? Object.values(obj) : []; }
 const CACHE = {
   members: [], sessions: [], schedules: [],
   pt_packages: [], weight_logs: [], routines: [], notices: [],
-  pkg_templates: [], personal_logs: [], custom_exercises: [],
+  pkg_templates: [], personal_logs: [], custom_exercises: [], weekly_checkins: [],
   admin_pw: '0000'
 };
 
 const DB = {
   async init() {
-    const [members, sessions, schedules, pt_packages, weight_logs, routines, notices, pkg_templates, personal_logs, custom_exercises, config] = await Promise.all([
+    const [members, sessions, schedules, pt_packages, weight_logs, routines, notices, pkg_templates, personal_logs, custom_exercises, weekly_checkins, config] = await Promise.all([
       _get('members'), _get('sessions'), _get('schedules'),
       _get('pt_packages'), _get('weight_logs'), _get('routines'),
-      _get('notices'), _get('pkg_templates'), _get('personal_logs'), _get('custom_exercises'), _get('config')
+      _get('notices'), _get('pkg_templates'), _get('personal_logs'), _get('custom_exercises'), _get('weekly_checkins'), _get('config')
     ]);
     CACHE.members          = _toArr(members);
     CACHE.sessions         = _toArr(sessions);
@@ -62,6 +62,7 @@ const DB = {
     CACHE.pkg_templates    = _toArr(pkg_templates);
     CACHE.personal_logs    = _toArr(personal_logs);
     CACHE.custom_exercises = _toArr(custom_exercises);
+    CACHE.weekly_checkins  = _toArr(weekly_checkins);
     CACHE.admin_pw         = config?.admin_pw || '0000';
   },
 
@@ -210,6 +211,22 @@ const DB = {
       });
     });
     return Object.values(stats).sort((a,b) => b.count-a.count);
+  },
+
+  // 주차별 컨디션 체크
+  getWeeklyCheckins() { return CACHE.weekly_checkins; },
+  getMemberWeeklyCheckins(memberId) { return CACHE.weekly_checkins.filter(c => c.memberId === memberId); },
+  getWeeklyCheckin(memberId, weekStart) { return CACHE.weekly_checkins.find(c => c.memberId === memberId && c.weekStart === weekStart); },
+  setWeeklyCheckin(memberId, weekStart, condition, memo='') {
+    const existing = this.getWeeklyCheckin(memberId, weekStart);
+    if (existing) {
+      const i = CACHE.weekly_checkins.findIndex(c => c.id === existing.id);
+      CACHE.weekly_checkins[i] = { ...existing, condition, memo };
+      _set(`weekly_checkins/${existing.id}`, CACHE.weekly_checkins[i]);
+      return CACHE.weekly_checkins[i];
+    }
+    const c = { id: this.uuid(), memberId, weekStart, condition, memo, updatedAt: new Date().toISOString() };
+    CACHE.weekly_checkins.push(c); _set(`weekly_checkins/${c.id}`, c); return c;
   },
 
   // 커스텀 운동 종목
