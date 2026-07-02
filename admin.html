@@ -185,9 +185,16 @@
         <div class="flex items-center justify-between mb-4">
           <div>
             <h2 style="font-size:1.1rem;font-weight:700">회원 관리</h2>
-            <p class="text-sm text-muted mt-2" id="member-count-label">전체 0명</p>
+            <p class="text-sm text-muted mt-2" id="member-count-label">활성 0명</p>
           </div>
           <button class="btn btn-primary" onclick="openAddMemberModal()">+ 회원 추가</button>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+          <input class="input" type="text" id="member-search" placeholder="🔍 이름 검색..." oninput="renderMembers()" style="max-width:200px;height:36px">
+          <div style="display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:8px">
+            <button id="tab-active" class="btn btn-primary btn-sm" onclick="setMemberTab('active')">활성 <span id="tab-active-count">0</span>명</button>
+            <button id="tab-terminated" class="btn btn-ghost btn-sm" onclick="setMemberTab('terminated')">종료 <span id="tab-terminated-count">0</span>명</button>
+          </div>
         </div>
         <div class="member-card-grid" id="member-grid"></div>
       </div>
@@ -1222,21 +1229,60 @@ function selectCalDate(dateStr) {
 }
 
 // ===== MEMBERS =====
+let memberTab = 'active';
+
+function setMemberTab(tab) {
+  memberTab = tab;
+  document.getElementById('tab-active').className = `btn btn-sm ${tab === 'active' ? 'btn-primary' : 'btn-ghost'}`;
+  document.getElementById('tab-terminated').className = `btn btn-sm ${tab === 'terminated' ? 'btn-primary' : 'btn-ghost'}`;
+  renderMembers();
+}
+
+function terminateMember(id) {
+  const m = DB.getMember(id);
+  if (!confirm(`${m.name} 회원을 종료 처리하시겠습니까?`)) return;
+  DB.updateMember(id, { status: 'terminated' });
+  renderMembers();
+  toast('종료 처리되었습니다');
+}
+
+function reactivateMember(id) {
+  const m = DB.getMember(id);
+  if (!confirm(`${m.name} 회원을 다시 활성화하시겠습니까?`)) return;
+  DB.updateMember(id, { status: 'active' });
+  renderMembers();
+  toast('재활성화되었습니다', 'success');
+}
+
 function renderMembers() {
-  const members = DB.getMembers();
-  document.getElementById('member-count-label').textContent = `전체 ${members.length}명`;
+  const q = (document.getElementById('member-search')?.value || '').trim().toLowerCase();
+  const all = DB.getMembers();
+  const activeAll = all.filter(m => m.status !== 'terminated');
+  const terminatedAll = all.filter(m => m.status === 'terminated');
+
+  document.getElementById('tab-active-count').textContent = activeAll.length;
+  document.getElementById('tab-terminated-count').textContent = terminatedAll.length;
+
+  const pool = memberTab === 'terminated' ? terminatedAll : activeAll;
+  const members = q ? pool.filter(m => m.name.toLowerCase().includes(q)) : pool;
+
+  document.getElementById('member-count-label').textContent =
+    memberTab === 'terminated' ? `종료 ${terminatedAll.length}명` : `활성 ${activeAll.length}명`;
+
   const grid = document.getElementById('member-grid');
   if (members.length === 0) {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">👥</div><div class="empty-text">등록된 회원이 없습니다<br>회원 추가 버튼을 눌러 시작하세요</div></div>';
+    const msg = memberTab === 'terminated' ? '종료된 회원이 없습니다' : q ? `'${q}' 검색 결과가 없습니다` : '등록된 회원이 없습니다<br>회원 추가 버튼을 눌러 시작하세요';
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">👥</div><div class="empty-text">${msg}</div></div>`;
     return;
   }
+  const isTerminated = memberTab === 'terminated';
   grid.innerHTML = members.map(m => {
     const stats = DB.getMemberStats(m.id);
-    return `<div class="member-info-card" onclick="showMemberDetail('${m.id}')">
+    return `<div class="member-info-card" style="${isTerminated ? 'opacity:0.65;background:var(--bg)' : ''}" onclick="showMemberDetail('${m.id}')">
       <div class="flex items-center gap-3">
-        <div class="member-avatar">${m.name[0]}</div>
+        <div class="member-avatar" style="${isTerminated ? 'background:#e5e7eb;color:#9ca3af' : ''}">${m.name[0]}</div>
         <div>
-          <div class="member-card-name">${m.name}</div>
+          <div class="member-card-name">${m.name}${isTerminated ? ' <span style="font-size:0.7rem;background:#e5e7eb;color:#6b7280;padding:2px 6px;border-radius:10px;font-weight:500">종료</span>' : ''}</div>
           <div class="member-card-meta">${m.goal||'목표 미설정'}</div>
         </div>
       </div>
@@ -1250,6 +1296,9 @@ function renderMembers() {
       <div class="flex gap-2">
         <button class="btn btn-ghost btn-sm" style="flex:1" onclick="event.stopPropagation();openEditMember('${m.id}')">수정</button>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();resetMemberPassword('${m.id}')" title="비밀번호 초기화">🔑</button>
+        ${isTerminated
+          ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();reactivateMember('${m.id}')">재활성</button>`
+          : `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();terminateMember('${m.id}')" title="세션 종료">종료</button>`}
         <button class="btn btn-red btn-sm" onclick="event.stopPropagation();deleteMember('${m.id}')">삭제</button>
       </div>
     </div>`;
