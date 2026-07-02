@@ -146,7 +146,8 @@ const DB = {
   deletePtPackage(id) { CACHE.pt_packages = CACHE.pt_packages.filter(p => p.id !== id); _del(`pt_packages/${id}`); },
   getPtRemaining(memberId) {
     const pkg = this.getActivePtPackage(memberId); if (!pkg) return null;
-    const used = CACHE.sessions.filter(s => s.memberId === memberId && s.attendance !== false && s.date >= pkg.purchaseDate).length;
+    const newSessions = CACHE.sessions.filter(s => s.memberId === memberId && s.attendance !== false && s.date >= pkg.purchaseDate).length;
+    const used = (pkg.startingUsed || 0) + newSessions;
     return { total: pkg.total, used, remaining: Math.max(0, pkg.total - used), pkg };
   },
 

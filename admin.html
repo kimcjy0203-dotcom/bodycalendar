@@ -1277,20 +1277,35 @@ function renderMembers() {
   }
   const isTerminated = memberTab === 'terminated';
   grid.innerHTML = members.map(m => {
+    const pt = DB.getPtRemaining(m.id);
     const stats = DB.getMemberStats(m.id);
+    const total = pt ? pt.total : '-';
+    const used  = pt ? pt.used  : stats.total;
+    const remaining = pt ? pt.remaining : '-';
+    const pct = pt && pt.total > 0 ? Math.round(pt.used / pt.total * 100) : 0;
     return `<div class="member-info-card" style="${isTerminated ? 'opacity:0.65;background:var(--bg)' : ''}" onclick="showMemberDetail('${m.id}')">
       <div class="flex items-center gap-3">
         <div class="member-avatar" style="${isTerminated ? 'background:#e5e7eb;color:#9ca3af' : ''}">${m.name[0]}</div>
-        <div>
+        <div style="flex:1;min-width:0">
           <div class="member-card-name">${m.name}${isTerminated ? ' <span style="font-size:0.7rem;background:#e5e7eb;color:#6b7280;padding:2px 6px;border-radius:10px;font-weight:500">종료</span>' : ''}</div>
           <div class="member-card-meta">${m.goal||'목표 미설정'}</div>
         </div>
       </div>
+      <div style="background:var(--bg);border-radius:8px;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <span style="font-size:0.8rem;color:var(--text-2)">진행 횟수</span>
+          <span style="font-size:0.85rem;font-weight:700">총 ${total}회 중 <span style="color:var(--primary)">${used}회</span> 진행</span>
+        </div>
+        <div style="height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--primary);border-radius:3px;transition:width 0.3s"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px">
+          <span style="font-size:0.75rem;color:var(--text-2)">잔여 ${remaining}회</span>
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.8rem">
-        <div><span class="text-muted">총 세션</span><br><strong>${stats.total}회</strong></div>
         <div><span class="text-muted">이번달</span><br><strong>${stats.thisMonth}회</strong></div>
         <div><span class="text-muted">출석률</span><br><strong>${stats.attendance}%</strong></div>
-        <div><span class="text-muted">예정</span><br><strong>${stats.upcomingCount}건</strong></div>
       </div>
       ${m.memo ? `<div style="font-size:0.78rem;color:var(--text-2);background:var(--bg);padding:8px;border-radius:6px">${m.memo}</div>` : ''}
       <div class="flex gap-2">
