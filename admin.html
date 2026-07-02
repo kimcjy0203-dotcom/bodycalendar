@@ -913,7 +913,7 @@
 </div>
 
 <div id="toast"></div>
-<script src="js/db.js?v=7"></script>
+<script src="js/db.js?v=8"></script>
 <script>
 if (DB.getRole() !== 'admin') { location.href = 'index.html'; }
 
@@ -2057,11 +2057,8 @@ function generateAiRoutine() {
 
   let main = [...pool.main];
   if (selectedCats.length) {
-    // 선택 부위 운동 먼저, 나머지 뒤에
-    main = [
-      ...main.filter(e => selectedCats.includes(e.category)),
-      ...main.filter(e => !selectedCats.includes(e.category))
-    ];
+    // 선택한 부위 운동만 포함
+    main = main.filter(e => selectedCats.includes(e.category));
   } else if (note) {
     // 특이사항 키워드 fallback
     const KEYWORD_CAT = {하체:'하체',등:'등',가슴:'가슴',어깨:'어깨',팔:'팔',복부:'복부',코어:'코어',유산소:'유산소'};
