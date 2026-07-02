@@ -788,12 +788,7 @@
       </div>
       <div class="input-group">
         <label>운동 부위 선택 <span style="font-weight:400;color:var(--text-2)">(복수 선택 가능)</span></label>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="ai-parts-grid">
-          ${['하체','가슴','등','어깨','팔','복부','코어','기능성/전신','유산소'].map(p=>`
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:16px;border:1.5px solid var(--border);cursor:pointer;font-size:0.8rem;user-select:none" id="ai-part-label-${p}">
-              <input type="checkbox" value="${p}" class="ai-part-cb" style="display:none" onchange="togglePartLabel('${p}')"> ${p}
-            </label>`).join('')}
-        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="ai-parts-grid"></div>
       </div>
       <div class="input-group">
         <label>특이사항 <span style="font-weight:400;color:var(--text-2)">(선택)</span></label>
@@ -918,7 +913,7 @@
 </div>
 
 <div id="toast"></div>
-<script src="js/db.js?v=6"></script>
+<script src="js/db.js?v=7"></script>
 <script>
 if (DB.getRole() !== 'admin') { location.href = 'index.html'; }
 
@@ -1844,18 +1839,25 @@ function renderPtPanel() {
 // ===== 루틴 자동 생성 (규칙 기반, 무료) =====
 let aiGeneratedRoutine = null;
 
+const AI_PARTS = ['하체','가슴','등','어깨','팔','복부','코어','기능성/전신','유산소'];
+
 function openAiRoutineModal() {
   document.getElementById('ai-result').style.display = 'none';
   document.getElementById('ai-error').style.display = 'none';
   document.getElementById('ai-modal-footer').innerHTML = `
     <button class="btn btn-ghost" onclick="closeModal('modal-ai-routine')">취소</button>
     <button class="btn btn-primary" id="ai-generate-btn" onclick="generateAiRoutine()" style="background:linear-gradient(135deg,#8B7FEE,#5BAFF7);border:none">✨ 생성하기</button>`;
+  // 부위 체크박스 동적 생성 (초기화 포함)
+  document.getElementById('ai-parts-grid').innerHTML = AI_PARTS.map(p => `
+    <label id="ai-part-label-${p.replace('/','_')}" style="display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:16px;border:1.5px solid var(--border);cursor:pointer;font-size:0.8rem;user-select:none">
+      <input type="checkbox" value="${p}" class="ai-part-cb" style="display:none" onchange="togglePartLabel('${p}')"> ${p}
+    </label>`).join('');
   aiGeneratedRoutine = null;
   document.getElementById('modal-ai-routine').classList.add('active');
 }
 
 function togglePartLabel(part) {
-  const label = document.getElementById('ai-part-label-' + part);
+  const label = document.getElementById('ai-part-label-' + part.replace('/','_'));
   const cb = label?.querySelector('input');
   if (!label || !cb) return;
   label.style.borderColor = cb.checked ? 'var(--primary)' : 'var(--border)';
