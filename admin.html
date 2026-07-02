@@ -743,6 +743,10 @@
         </div>
       </div>
       <div class="input-group">
+        <label>이미 진행한 횟수 <span style="font-size:0.78rem;color:var(--text-2)">(기존 기록 없을 때 직접 입력)</span></label>
+        <input class="input" type="number" id="pt-starting-used" placeholder="0" min="0" value="0">
+      </div>
+      <div class="input-group">
         <label>만료일</label>
         <input class="input" type="date" id="pt-expiry-date">
       </div>
@@ -1941,6 +1945,7 @@ function renderPtPanel() {
       </div>` : `<div style="text-align:center;padding:16px 0;color:var(--text-3)">패키지 없음</div>`}
       <div class="flex gap-2">
         <button class="btn btn-primary btn-sm" style="flex:1" onclick="openPtModalForMember('${m.id}')">+ 패키지 추가</button>
+        ${pt ? `<button class="btn btn-ghost btn-sm" onclick="openEditPtModal('${pt.pkg.id}')">수정</button>` : ''}
         ${pkgs.length > 0 ? `<button class="btn btn-ghost btn-sm" onclick="showPtHistory('${m.id}')">이력</button>` : ''}
       </div>
     </div>`;
@@ -2520,9 +2525,25 @@ function openPtModal() {
   document.getElementById('pt-member').value = '';
   document.getElementById('pt-template-select').value = '';
   document.getElementById('pt-total').value = '';
+  document.getElementById('pt-starting-used').value = '0';
   document.getElementById('pt-purchase-date').value = today.toISOString().split('T')[0];
   document.getElementById('pt-expiry-date').value = '';
   document.getElementById('pt-note').value = '';
+  renderPkgTemplates();
+  openModal('modal-pt');
+}
+
+function openEditPtModal(pkgId) {
+  const pkg = DB.getPtPackages().find(p => p.id === pkgId);
+  if (!pkg) return;
+  document.getElementById('modal-pt-title').textContent = 'PT 패키지 수정';
+  document.getElementById('edit-pt-id').value = pkgId;
+  document.getElementById('pt-member').value = pkg.memberId;
+  document.getElementById('pt-total').value = pkg.total;
+  document.getElementById('pt-starting-used').value = pkg.startingUsed || 0;
+  document.getElementById('pt-purchase-date').value = pkg.purchaseDate || '';
+  document.getElementById('pt-expiry-date').value = pkg.expiryDate || '';
+  document.getElementById('pt-note').value = pkg.note || '';
   renderPkgTemplates();
   openModal('modal-pt');
 }
@@ -2533,17 +2554,25 @@ function openPtModalForMember(memberId) {
 }
 
 function savePtPackage() {
+  const editId = document.getElementById('edit-pt-id').value;
   const memberId = document.getElementById('pt-member').value;
   const total = parseInt(document.getElementById('pt-total').value);
+  const startingUsed = parseInt(document.getElementById('pt-starting-used').value) || 0;
   if (!memberId) { toast('회원을 선택하세요', 'error'); return; }
   if (!total || total < 1) { toast('횟수를 입력하세요', 'error'); return; }
-  DB.addPtPackage({
-    memberId, total,
+  const data = {
+    memberId, total, startingUsed,
     purchaseDate: document.getElementById('pt-purchase-date').value || today.toISOString().split('T')[0],
     expiryDate: document.getElementById('pt-expiry-date').value,
     note: document.getElementById('pt-note').value.trim(),
-  });
-  toast('PT 패키지가 등록되었습니다', 'success');
+  };
+  if (editId) {
+    DB.updatePtPackage(editId, data);
+    toast('PT 패키지가 수정되었습니다', 'success');
+  } else {
+    DB.addPtPackage(data);
+    toast('PT 패키지가 등록되었습니다', 'success');
+  }
   closeModal('modal-pt');
   renderPtPanel();
   if (detailMemberId === memberId) showMemberDetail(memberId);
