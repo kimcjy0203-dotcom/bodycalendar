@@ -761,16 +761,16 @@
     <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="input-group" style="margin:0">
-          <label>주차 (월요일 기준)</label>
+          <label>주차 (날짜 선택)</label>
           <input class="input" type="date" id="wr-week">
         </div>
         <div class="input-group" style="margin:0">
           <label>루틴 제목</label>
-          <input class="input" type="text" id="wr-title" placeholder="예: 이번 주 하체 루틴">
+          <input class="input" type="text" id="wr-title" placeholder="예: 6월 5주차 루틴">
         </div>
       </div>
-      <div class="input-group">
-        <label>루틴 불러오기 <span style="font-weight:400;color:var(--text-2)">(선택)</span></label>
+      <div class="input-group" style="margin:0">
+        <label>템플릿 불러오기 <span style="font-weight:400;color:var(--text-2)">(선택 요일에 적용)</span></label>
         <div style="display:flex;gap:8px">
           <select class="select" id="wr-template-select" style="flex:1">
             <option value="">-- 저장된 루틴에서 불러오기 --</option>
@@ -779,14 +779,12 @@
           <button class="btn btn-ghost" style="background:linear-gradient(135deg,#8B7FEE,#5BAFF7);color:#fff;border:none" onclick="openWrAiGenerate()">✨ AI 생성</button>
         </div>
       </div>
+      <!-- 요일 탭 -->
       <div>
-        <div class="flex items-center justify-between mb-2">
-          <label style="font-weight:600;font-size:0.85rem">운동 목록</label>
-          <button class="btn btn-ghost btn-sm" onclick="addWrExRow()">+ 운동 추가</button>
-        </div>
-        <div id="wr-exercises" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div style="display:flex;gap:4px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px" id="wr-day-tabs"></div>
+        <div id="wr-day-panels"></div>
       </div>
-      <div class="input-group">
+      <div class="input-group" style="margin:0">
         <label>트레이너 메모</label>
         <textarea class="input" id="wr-note" rows="2" placeholder="이번 주 포인트, 주의사항 등" style="resize:vertical"></textarea>
       </div>
@@ -967,7 +965,7 @@
 </div>
 
 <div id="toast"></div>
-<script src="js/db.js?v=9"></script>
+<script src="js/db.js?v=10"></script>
 <script>
 if (DB.getRole() !== 'admin') { location.href = 'index.html'; }
 
@@ -2166,7 +2164,9 @@ function saveAiRoutine() {
 }
 
 // ===== 주간 루틴 (관리자 → 회원) =====
-let wrExCount = 0;
+const WR_DAYS = ['월', '화', '수', '목', '금', '토'];
+let wrActiveDay = '월';
+let wrExCounts = {};
 
 function getMonday(date) {
   const d = new Date(date + 'T00:00:00');
@@ -2176,46 +2176,94 @@ function getMonday(date) {
   return d.toISOString().split('T')[0];
 }
 
+function buildWrDayUI() {
+  wrExCounts = {};
+  WR_DAYS.forEach(d => { wrExCounts[d] = 0; });
+
+  document.getElementById('wr-day-tabs').innerHTML = WR_DAYS.map(d => `
+    <button id="wr-tab-${d}" onclick="switchWrDay('${d}')"
+      style="padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-size:0.82rem;font-weight:400;white-space:nowrap;transition:all 0.15s">
+      ${d}요일
+    </button>`).join('');
+
+  document.getElementById('wr-day-panels').innerHTML = WR_DAYS.map(d => `
+    <div id="wr-panel-${d}" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label style="font-weight:600;font-size:0.85rem">${d}요일 운동</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;cursor:pointer">
+          <input type="checkbox" id="wr-rest-${d}" onchange="toggleWrRest('${d}')"> 휴식일
+        </label>
+      </div>
+      <div id="wr-ex-${d}" style="display:flex;flex-direction:column;gap:7px"></div>
+      <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="addWrExRow('${d}')">+ 운동 추가</button>
+    </div>`).join('');
+}
+
+function switchWrDay(day) {
+  wrActiveDay = day;
+  WR_DAYS.forEach(d => {
+    const tab = document.getElementById(`wr-tab-${d}`);
+    const panel = document.getElementById(`wr-panel-${d}`);
+    const active = d === day;
+    tab.style.background = active ? 'var(--primary)' : '#fff';
+    tab.style.color = active ? '#fff' : '';
+    tab.style.fontWeight = active ? '700' : '400';
+    tab.style.borderColor = active ? 'var(--primary)' : 'var(--border)';
+    panel.style.display = active ? '' : 'none';
+  });
+}
+
+function toggleWrRest(day) {
+  const isRest = document.getElementById(`wr-rest-${day}`).checked;
+  document.getElementById(`wr-ex-${day}`).style.display = isRest ? 'none' : '';
+  document.getElementById(`wr-ex-${day}`).nextElementSibling.style.display = isRest ? 'none' : '';
+}
+
+function addWrExRow(day, name='', sets=3, reps='10-12회', weight='', note='') {
+  day = day || wrActiveDay;
+  const id = `${day}_${++wrExCounts[day]}`;
+  const row = document.createElement('div');
+  row.id = `wr-ex-${id}`;
+  row.style.cssText = 'display:grid;grid-template-columns:2fr 55px 80px 90px 1fr auto;gap:5px;align-items:center';
+  row.innerHTML = `
+    <input class="input" type="text" list="exercise-search-list" placeholder="운동 이름" value="${name}" style="min-width:0;font-size:0.82rem">
+    <input class="input" type="number" placeholder="세트" value="${sets}" min="1" style="text-align:center;font-size:0.82rem">
+    <input class="input" type="text" placeholder="횟수" value="${reps}" style="min-width:0;font-size:0.82rem">
+    <input class="input" type="text" placeholder="무게" value="${weight}" style="min-width:0;font-size:0.82rem">
+    <input class="input" type="text" placeholder="메모" value="${note}" style="min-width:0;font-size:0.82rem">
+    <button class="btn btn-ghost btn-sm btn-icon" onclick="document.getElementById('wr-ex-${id}').remove()">✕</button>`;
+  document.getElementById(`wr-ex-${day}`).appendChild(row);
+}
+
 function openWeeklyRoutineModal(weekStart) {
-  wrExCount = 0;
-  // 이번 주 월요일 기본값
+  buildWrDayUI();
   const monday = weekStart || getMonday(new Date().toISOString().split('T')[0]);
   document.getElementById('wr-week').value = monday;
   document.getElementById('wr-title').value = '';
   document.getElementById('wr-note').value = '';
-  document.getElementById('wr-exercises').innerHTML = '';
 
-  // 기존 루틴이 있으면 불러오기
   const existing = detailMemberId ? DB.getMemberWeeklyRoutine(detailMemberId, monday) : null;
   if (existing) {
     document.getElementById('wr-title').value = existing.title || '';
     document.getElementById('wr-note').value = existing.note || '';
-    (existing.exercises || []).forEach(e => addWrExRow(e.name, e.sets, e.reps, e.weight, e.note));
-  } else {
-    addWrExRow();
+    if (existing.days) {
+      WR_DAYS.forEach(d => {
+        const dayData = existing.days[d];
+        if (!dayData) return;
+        if (dayData.rest) { document.getElementById(`wr-rest-${d}`).checked = true; toggleWrRest(d); return; }
+        (dayData.exercises || []).forEach(e => addWrExRow(d, e.name, e.sets, e.reps, e.weight, e.note));
+      });
+    } else {
+      (existing.exercises || []).forEach(e => addWrExRow('월', e.name, e.sets, e.reps, e.weight, e.note));
+    }
   }
 
-  // 템플릿 드롭다운 채우기
   const sel = document.getElementById('wr-template-select');
   sel.innerHTML = '<option value="">-- 저장된 루틴에서 불러오기 --</option>' +
     DB.getRoutines().map(r => `<option value="${r.id}">${r.name}</option>`).join('');
 
+  switchWrDay('월');
   document.getElementById('modal-weekly-routine').classList.add('active');
-}
-
-function addWrExRow(name='', sets=3, reps='10-12회', weight='', note='') {
-  const id = ++wrExCount;
-  const row = document.createElement('div');
-  row.id = `wr-ex-${id}`;
-  row.style.cssText = 'display:grid;grid-template-columns:2fr 60px 90px 100px 1fr auto;gap:6px;align-items:center';
-  row.innerHTML = `
-    <input class="input" type="text" list="exercise-search-list" placeholder="운동 이름" value="${name}" style="min-width:0">
-    <input class="input" type="number" placeholder="세트" value="${sets}" min="1" style="text-align:center">
-    <input class="input" type="text" placeholder="횟수/시간" value="${reps}" style="min-width:0">
-    <input class="input" type="text" placeholder="무게" value="${weight}" style="min-width:0">
-    <input class="input" type="text" placeholder="메모" value="${note}" style="min-width:0">
-    <button class="btn btn-ghost btn-sm btn-icon" onclick="document.getElementById('wr-ex-${id}').remove()">✕</button>`;
-  document.getElementById('wr-exercises').appendChild(row);
 }
 
 function loadWrTemplate() {
@@ -2224,10 +2272,10 @@ function loadWrTemplate() {
   const r = DB.getRoutines().find(x => x.id === id);
   if (!r) return;
   document.getElementById('wr-title').value = r.name;
-  document.getElementById('wr-exercises').innerHTML = '';
-  wrExCount = 0;
-  (r.exercises || []).forEach(e => addWrExRow(e.name, e.sets, e.reps || '', e.weight || '', e.note || ''));
-  toast('루틴을 불러왔습니다');
+  document.getElementById(`wr-ex-${wrActiveDay}`).innerHTML = '';
+  wrExCounts[wrActiveDay] = 0;
+  (r.exercises || []).forEach(e => addWrExRow(wrActiveDay, e.name, e.sets, e.reps || '', e.weight || '', e.note || ''));
+  toast(`${wrActiveDay}요일에 루틴을 불러왔습니다`);
 }
 
 function openWrAiGenerate() {
@@ -2238,11 +2286,14 @@ function openWrAiGenerate() {
 function applyAiToWrAndClose() {
   if (!aiGeneratedRoutine) return;
   closeModal('modal-ai-routine');
+  if (!document.getElementById(`wr-panel-${wrActiveDay}`)) buildWrDayUI();
   document.getElementById('wr-title').value = aiGeneratedRoutine.title;
-  document.getElementById('wr-exercises').innerHTML = '';
-  wrExCount = 0;
-  aiGeneratedRoutine.exercises.forEach(e => addWrExRow(e.name, e.sets, e.reps, e.weight, `휴식 ${e.rest}`));
+  document.getElementById(`wr-ex-${wrActiveDay}`).innerHTML = '';
+  wrExCounts[wrActiveDay] = 0;
+  aiGeneratedRoutine.exercises.forEach(e => addWrExRow(wrActiveDay, e.name, e.sets, e.reps, e.weight, `휴식 ${e.rest}`));
+  switchWrDay(wrActiveDay);
   document.getElementById('modal-weekly-routine').classList.add('active');
+  toast(`${wrActiveDay}요일에 AI 루틴을 적용했습니다`);
 }
 
 function saveWeeklyRoutine() {
@@ -2253,14 +2304,22 @@ function saveWeeklyRoutine() {
   const weekStart = getMonday(weekInput);
   const title = document.getElementById('wr-title').value.trim() || '주간 루틴';
   const note  = document.getElementById('wr-note').value.trim();
-  const exercises = [...document.getElementById('wr-exercises').querySelectorAll('div[id^="wr-ex-"]')].map(row => {
-    const inputs = row.querySelectorAll('input');
-    return { name: inputs[0].value.trim(), sets: parseInt(inputs[1].value)||3, reps: inputs[2].value.trim(), weight: inputs[3].value.trim(), note: inputs[4].value.trim() };
-  }).filter(e => e.name);
 
-  if (!exercises.length) { toast('운동을 1개 이상 추가하세요', 'error'); return; }
+  const days = {};
+  WR_DAYS.forEach(d => {
+    const isRest = document.getElementById(`wr-rest-${d}`)?.checked;
+    if (isRest) { days[d] = { rest: true, exercises: [] }; return; }
+    const exercises = [...(document.getElementById(`wr-ex-${d}`)?.querySelectorAll('[id^="wr-ex-"]') || [])].map(row => {
+      const inputs = row.querySelectorAll('input');
+      return { name: inputs[0].value.trim(), sets: parseInt(inputs[1].value)||3, reps: inputs[2].value.trim(), weight: inputs[3].value.trim(), note: inputs[4].value.trim() };
+    }).filter(e => e.name);
+    if (exercises.length) days[d] = { exercises };
+  });
 
-  DB.setWeeklyRoutine(detailMemberId, weekStart, { title, note, exercises });
+  const hasSomething = Object.values(days).some(d => d.exercises?.length > 0);
+  if (!hasSomething) { toast('운동을 1개 이상 추가하세요', 'error'); return; }
+
+  DB.setWeeklyRoutine(detailMemberId, weekStart, { title, note, days });
   closeModal('modal-weekly-routine');
   renderMemberDetailWeeklyRoutines();
   toast('주간 루틴이 저장되었습니다', 'success');
@@ -2285,8 +2344,14 @@ function renderMemberDetailWeeklyRoutines() {
           <button class="btn btn-red btn-sm" onclick="deleteWeeklyRoutineEntry('${r.weekStart}')">삭제</button>
         </div>
       </div>
-      <div style="font-size:0.8rem;color:var(--text-2);margin-top:4px">${(r.exercises||[]).map(e=>`${e.name} ${e.sets}세트×${e.reps}`).join(' · ')}</div>
-      ${r.note ? `<div style="font-size:0.78rem;color:var(--text-3);margin-top:2px">📝 ${r.note}</div>` : ''}
+      <div style="font-size:0.78rem;color:var(--text-2);margin-top:4px">
+        ${r.days ? ['월','화','수','목','금','토'].filter(d=>r.days[d]).map(d=>{
+          const dd=r.days[d];
+          if(dd.rest) return `<span style="color:var(--text-3)">${d}휴식</span>`;
+          return `<span><b>${d}</b> ${(dd.exercises||[]).map(e=>e.name).join('·')}</span>`;
+        }).join(' / ') : (r.exercises||[]).map(e=>`${e.name} ${e.sets}×${e.reps}`).join(' · ')}
+      </div>
+      ${r.note ? `<div style="font-size:0.75rem;color:var(--text-3);margin-top:2px">📝 ${r.note}</div>` : ''}
     </div>`;
   }).join('');
 }
