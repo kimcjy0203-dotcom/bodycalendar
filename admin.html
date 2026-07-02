@@ -217,6 +217,13 @@
           <div style="display:flex;flex-direction:column;gap:16px">
             <div class="card">
               <div class="card-header">
+                <span class="card-title">📋 주간 루틴</span>
+                <button class="btn btn-primary btn-sm" onclick="openWeeklyRoutineModal()">+ 루틴 등록</button>
+              </div>
+              <div class="card-body" id="member-detail-weekly-routine" style="min-height:60px;max-height:320px;overflow-y:auto"></div>
+            </div>
+            <div class="card">
+              <div class="card-header">
                 <span class="card-title">🏋️ PT 레슨 이력</span>
                 <button class="btn btn-primary btn-sm" onclick="openSessionModalForMember()">+ 세션 기록</button>
               </div>
@@ -744,6 +751,53 @@
   </div>
 </div>
 
+<!-- 주간 루틴 등록 모달 -->
+<div class="modal-overlay" id="modal-weekly-routine">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">📋 주간 루틴 등록</span>
+      <button class="close-btn" onclick="closeModal('modal-weekly-routine')">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="input-group" style="margin:0">
+          <label>주차 (월요일 기준)</label>
+          <input class="input" type="date" id="wr-week">
+        </div>
+        <div class="input-group" style="margin:0">
+          <label>루틴 제목</label>
+          <input class="input" type="text" id="wr-title" placeholder="예: 이번 주 하체 루틴">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>루틴 불러오기 <span style="font-weight:400;color:var(--text-2)">(선택)</span></label>
+        <div style="display:flex;gap:8px">
+          <select class="select" id="wr-template-select" style="flex:1">
+            <option value="">-- 저장된 루틴에서 불러오기 --</option>
+          </select>
+          <button class="btn btn-ghost" onclick="loadWrTemplate()">불러오기</button>
+          <button class="btn btn-ghost" style="background:linear-gradient(135deg,#8B7FEE,#5BAFF7);color:#fff;border:none" onclick="openWrAiGenerate()">✨ AI 생성</button>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label style="font-weight:600;font-size:0.85rem">운동 목록</label>
+          <button class="btn btn-ghost btn-sm" onclick="addWrExRow()">+ 운동 추가</button>
+        </div>
+        <div id="wr-exercises" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+      <div class="input-group">
+        <label>트레이너 메모</label>
+        <textarea class="input" id="wr-note" rows="2" placeholder="이번 주 포인트, 주의사항 등" style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-weekly-routine')">취소</button>
+      <button class="btn btn-primary" onclick="saveWeeklyRoutine()">저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODAL: ROUTINE ===== -->
 <!-- AI 루틴 생성 모달 -->
 <div class="modal-overlay" id="modal-ai-routine">
@@ -913,7 +967,7 @@
 </div>
 
 <div id="toast"></div>
-<script src="js/db.js?v=8"></script>
+<script src="js/db.js?v=9"></script>
 <script>
 if (DB.getRole() !== 'admin') { location.href = 'index.html'; }
 
@@ -1261,6 +1315,8 @@ function showMemberDetail(memberId) {
       <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="openPtModalForMember('${memberId}')">+ 패키지 등록</button>
     </div>`}
   `;
+
+  renderMemberDetailWeeklyRoutines();
 
   const sessions = DB.getMemberSessions(memberId);
   const sessionsEl = document.getElementById('member-detail-sessions');
@@ -2089,7 +2145,8 @@ function generateAiRoutine() {
   document.getElementById('ai-result').style.display = '';
   document.getElementById('ai-modal-footer').innerHTML = `
     <button class="btn btn-ghost" onclick="generateAiRoutine()">🔄 다시 생성</button>
-    <button class="btn btn-primary" onclick="saveAiRoutine()" style="background:linear-gradient(135deg,#8B7FEE,#5BAFF7);border:none">💾 루틴으로 저장</button>`;
+    <button class="btn btn-ghost" onclick="applyAiToWrAndClose()">📋 주간 루틴에 적용</button>
+    <button class="btn btn-primary" onclick="saveAiRoutine()" style="background:linear-gradient(135deg,#8B7FEE,#5BAFF7);border:none">💾 루틴 템플릿 저장</button>`;
 }
 
 function saveAiRoutine() {
@@ -2106,6 +2163,139 @@ function saveAiRoutine() {
   closeModal('modal-ai-routine');
   renderRoutinesPanel();
   toast('루틴이 저장되었습니다 ✨', 'success');
+}
+
+// ===== 주간 루틴 (관리자 → 회원) =====
+let wrExCount = 0;
+
+function getMonday(date) {
+  const d = new Date(date + 'T00:00:00');
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split('T')[0];
+}
+
+function openWeeklyRoutineModal(weekStart) {
+  wrExCount = 0;
+  // 이번 주 월요일 기본값
+  const monday = weekStart || getMonday(new Date().toISOString().split('T')[0]);
+  document.getElementById('wr-week').value = monday;
+  document.getElementById('wr-title').value = '';
+  document.getElementById('wr-note').value = '';
+  document.getElementById('wr-exercises').innerHTML = '';
+
+  // 기존 루틴이 있으면 불러오기
+  const existing = detailMemberId ? DB.getMemberWeeklyRoutine(detailMemberId, monday) : null;
+  if (existing) {
+    document.getElementById('wr-title').value = existing.title || '';
+    document.getElementById('wr-note').value = existing.note || '';
+    (existing.exercises || []).forEach(e => addWrExRow(e.name, e.sets, e.reps, e.weight, e.note));
+  } else {
+    addWrExRow();
+  }
+
+  // 템플릿 드롭다운 채우기
+  const sel = document.getElementById('wr-template-select');
+  sel.innerHTML = '<option value="">-- 저장된 루틴에서 불러오기 --</option>' +
+    DB.getRoutines().map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+
+  document.getElementById('modal-weekly-routine').classList.add('active');
+}
+
+function addWrExRow(name='', sets=3, reps='10-12회', weight='', note='') {
+  const id = ++wrExCount;
+  const row = document.createElement('div');
+  row.id = `wr-ex-${id}`;
+  row.style.cssText = 'display:grid;grid-template-columns:2fr 60px 90px 100px 1fr auto;gap:6px;align-items:center';
+  row.innerHTML = `
+    <input class="input" type="text" list="exercise-search-list" placeholder="운동 이름" value="${name}" style="min-width:0">
+    <input class="input" type="number" placeholder="세트" value="${sets}" min="1" style="text-align:center">
+    <input class="input" type="text" placeholder="횟수/시간" value="${reps}" style="min-width:0">
+    <input class="input" type="text" placeholder="무게" value="${weight}" style="min-width:0">
+    <input class="input" type="text" placeholder="메모" value="${note}" style="min-width:0">
+    <button class="btn btn-ghost btn-sm btn-icon" onclick="document.getElementById('wr-ex-${id}').remove()">✕</button>`;
+  document.getElementById('wr-exercises').appendChild(row);
+}
+
+function loadWrTemplate() {
+  const id = document.getElementById('wr-template-select').value;
+  if (!id) return;
+  const r = DB.getRoutines().find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('wr-title').value = r.name;
+  document.getElementById('wr-exercises').innerHTML = '';
+  wrExCount = 0;
+  (r.exercises || []).forEach(e => addWrExRow(e.name, e.sets, e.reps || '', e.weight || '', e.note || ''));
+  toast('루틴을 불러왔습니다');
+}
+
+function openWrAiGenerate() {
+  closeModal('modal-weekly-routine');
+  openAiRoutineModal();
+}
+
+function applyAiToWrAndClose() {
+  if (!aiGeneratedRoutine) return;
+  closeModal('modal-ai-routine');
+  document.getElementById('wr-title').value = aiGeneratedRoutine.title;
+  document.getElementById('wr-exercises').innerHTML = '';
+  wrExCount = 0;
+  aiGeneratedRoutine.exercises.forEach(e => addWrExRow(e.name, e.sets, e.reps, e.weight, `휴식 ${e.rest}`));
+  document.getElementById('modal-weekly-routine').classList.add('active');
+}
+
+function saveWeeklyRoutine() {
+  const weekInput = document.getElementById('wr-week').value;
+  if (!weekInput) { toast('주차를 선택하세요', 'error'); return; }
+  if (!detailMemberId) { toast('회원을 선택하세요', 'error'); return; }
+
+  const weekStart = getMonday(weekInput);
+  const title = document.getElementById('wr-title').value.trim() || '주간 루틴';
+  const note  = document.getElementById('wr-note').value.trim();
+  const exercises = [...document.getElementById('wr-exercises').querySelectorAll('div[id^="wr-ex-"]')].map(row => {
+    const inputs = row.querySelectorAll('input');
+    return { name: inputs[0].value.trim(), sets: parseInt(inputs[1].value)||3, reps: inputs[2].value.trim(), weight: inputs[3].value.trim(), note: inputs[4].value.trim() };
+  }).filter(e => e.name);
+
+  if (!exercises.length) { toast('운동을 1개 이상 추가하세요', 'error'); return; }
+
+  DB.setWeeklyRoutine(detailMemberId, weekStart, { title, note, exercises });
+  closeModal('modal-weekly-routine');
+  renderMemberDetailWeeklyRoutines();
+  toast('주간 루틴이 저장되었습니다', 'success');
+}
+
+function renderMemberDetailWeeklyRoutines() {
+  const el = document.getElementById('member-detail-weekly-routine');
+  if (!el || !detailMemberId) return;
+  const routines = DB.getMemberWeeklyRoutines(detailMemberId);
+  if (!routines.length) { el.innerHTML = '<div style="text-align:center;padding:16px 0;color:var(--text-3);font-size:0.85rem">등록된 주간 루틴이 없습니다</div>'; return; }
+  el.innerHTML = routines.map(r => {
+    const ws = new Date(r.weekStart + 'T00:00:00');
+    const we = new Date(r.weekStart + 'T00:00:00'); we.setDate(we.getDate() + 6);
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <span style="font-weight:700;font-size:0.9rem">${r.title}</span>
+          <span style="font-size:0.75rem;color:var(--text-2);margin-left:8px">${ws.toLocaleDateString('ko-KR',{month:'short',day:'numeric'})} ~ ${we.toLocaleDateString('ko-KR',{month:'short',day:'numeric'})}</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="openWeeklyRoutineModal('${r.weekStart}')">수정</button>
+          <button class="btn btn-red btn-sm" onclick="deleteWeeklyRoutineEntry('${r.weekStart}')">삭제</button>
+        </div>
+      </div>
+      <div style="font-size:0.8rem;color:var(--text-2);margin-top:4px">${(r.exercises||[]).map(e=>`${e.name} ${e.sets}세트×${e.reps}`).join(' · ')}</div>
+      ${r.note ? `<div style="font-size:0.78rem;color:var(--text-3);margin-top:2px">📝 ${r.note}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function deleteWeeklyRoutineEntry(weekStart) {
+  if (!confirm('이 주간 루틴을 삭제하시겠습니까?')) return;
+  DB.deleteWeeklyRoutine(detailMemberId, weekStart);
+  renderMemberDetailWeeklyRoutines();
+  toast('삭제되었습니다');
 }
 
 // ===== 커스텀 운동 종목 =====

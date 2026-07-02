@@ -263,7 +263,7 @@
 <datalist id="exercise-list"></datalist>
 
 <div id="toast"></div>
-<script src="js/db.js?v=8"></script>
+<script src="js/db.js?v=9"></script>
 <script>
 if (DB.getRole() !== 'member') { location.href = 'index.html'; }
 
@@ -781,6 +781,7 @@ function renderPersonalLogs() {
 
     const checkin = DB.getWeeklyCheckin(memberId, ws);
     const logs = DB.getMemberPersonalLogs(memberId).filter(l => getWeekStart(l.date) === ws);
+    const trainerRoutine = DB.getMemberWeeklyRoutine(memberId, ws);
 
     const conditionBtns = CONDITION_OPTIONS.map(o => `
       <button onclick="setCondition('${ws}','${o.value}')"
@@ -809,12 +810,23 @@ function renderPersonalLogs() {
             <span style="font-size:0.85rem;font-weight:700">${label}</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
+            ${trainerRoutine?'<span style="font-size:0.7rem;background:#e8f5e9;color:#2e7d32;padding:2px 7px;border-radius:10px;font-weight:600">루틴 있음</span>':''}
             ${checkin?.condition?`<span style="font-size:0.85rem">${CONDITION_OPTIONS.find(o=>o.value===checkin.condition)?.emoji||''}</span>`:''}
             ${logs.length?`<span style="font-size:0.75rem;color:var(--primary);font-weight:600">${logs.length}개</span>`:''}
             <span id="wk-arrow-${ws}" style="color:var(--text-3);transition:transform 0.2s">${isCurrentWeek?'▲':'▼'}</span>
           </div>
         </div>
         <div id="wk-${ws}" style="padding:0 16px 14px;${isCurrentWeek?'':'display:none'}">
+          ${trainerRoutine ? `
+          <div style="background:linear-gradient(135deg,#f3f0ff,#e8f0ff);border-radius:10px;padding:12px 14px;margin-bottom:12px;border:1.5px solid #c5b8ff">
+            <div style="font-size:0.78rem;font-weight:700;color:#6c4fcf;margin-bottom:6px">📋 트레이너 주간 루틴 · ${trainerRoutine.title}</div>
+            ${(trainerRoutine.exercises||[]).map(e=>`
+              <div style="font-size:0.8rem;padding:4px 0;border-bottom:1px solid #ddd6ff;display:flex;justify-content:space-between">
+                <span style="font-weight:600">${e.name}</span>
+                <span style="color:#6c4fcf">${e.sets}세트 × ${e.reps}${e.weight?' · '+e.weight:''}</span>
+              </div>`).join('')}
+            ${trainerRoutine.note?`<div style="font-size:0.75rem;color:#6c4fcf;margin-top:6px">💬 ${trainerRoutine.note}</div>`:''}
+          </div>` : ''}
           <div style="margin-bottom:10px">
             <div style="font-size:0.78rem;font-weight:600;color:var(--text-2);margin-bottom:6px">이번 주 컨디션</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">${conditionBtns}</div>

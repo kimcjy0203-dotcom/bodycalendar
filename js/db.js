@@ -41,16 +41,16 @@ function _toArr(obj) { return obj ? Object.values(obj) : []; }
 const CACHE = {
   members: [], sessions: [], schedules: [],
   pt_packages: [], weight_logs: [], routines: [], notices: [],
-  pkg_templates: [], personal_logs: [], custom_exercises: [], weekly_checkins: [],
+  pkg_templates: [], personal_logs: [], custom_exercises: [], weekly_checkins: [], weekly_routines: [],
   admin_pw: '0000'
 };
 
 const DB = {
   async init() {
-    const [members, sessions, schedules, pt_packages, weight_logs, routines, notices, pkg_templates, personal_logs, custom_exercises, weekly_checkins, config] = await Promise.all([
+    const [members, sessions, schedules, pt_packages, weight_logs, routines, notices, pkg_templates, personal_logs, custom_exercises, weekly_checkins, weekly_routines, config] = await Promise.all([
       _get('members'), _get('sessions'), _get('schedules'),
       _get('pt_packages'), _get('weight_logs'), _get('routines'),
-      _get('notices'), _get('pkg_templates'), _get('personal_logs'), _get('custom_exercises'), _get('weekly_checkins'), _get('config')
+      _get('notices'), _get('pkg_templates'), _get('personal_logs'), _get('custom_exercises'), _get('weekly_checkins'), _get('weekly_routines'), _get('config')
     ]);
     CACHE.members          = _toArr(members);
     CACHE.sessions         = _toArr(sessions);
@@ -63,6 +63,7 @@ const DB = {
     CACHE.personal_logs    = _toArr(personal_logs);
     CACHE.custom_exercises = _toArr(custom_exercises);
     CACHE.weekly_checkins  = _toArr(weekly_checkins);
+    CACHE.weekly_routines  = _toArr(weekly_routines);
     CACHE.admin_pw         = config?.admin_pw || '0000';
   },
 
@@ -211,6 +212,28 @@ const DB = {
       });
     });
     return Object.values(stats).sort((a,b) => b.count-a.count);
+  },
+
+  // 주간 루틴 (관리자 → 회원)
+  getWeeklyRoutines() { return CACHE.weekly_routines; },
+  getMemberWeeklyRoutine(memberId, weekStart) { return CACHE.weekly_routines.find(r => r.memberId === memberId && r.weekStart === weekStart); },
+  getMemberWeeklyRoutines(memberId) { return CACHE.weekly_routines.filter(r => r.memberId === memberId).sort((a,b) => b.weekStart.localeCompare(a.weekStart)); },
+  setWeeklyRoutine(memberId, weekStart, data) {
+    const existing = this.getMemberWeeklyRoutine(memberId, weekStart);
+    if (existing) {
+      const i = CACHE.weekly_routines.findIndex(r => r.id === existing.id);
+      CACHE.weekly_routines[i] = { ...existing, ...data, updatedAt: new Date().toISOString() };
+      _set(`weekly_routines/${existing.id}`, CACHE.weekly_routines[i]);
+      return CACHE.weekly_routines[i];
+    }
+    const r = { id: this.uuid(), memberId, weekStart, createdAt: new Date().toISOString(), ...data };
+    CACHE.weekly_routines.push(r); _set(`weekly_routines/${r.id}`, r); return r;
+  },
+  deleteWeeklyRoutine(memberId, weekStart) {
+    const r = this.getMemberWeeklyRoutine(memberId, weekStart);
+    if (!r) return;
+    CACHE.weekly_routines = CACHE.weekly_routines.filter(x => x.id !== r.id);
+    _del(`weekly_routines/${r.id}`);
   },
 
   // 주차별 컨디션 체크
