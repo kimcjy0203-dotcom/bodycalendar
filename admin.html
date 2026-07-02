@@ -753,36 +753,51 @@
       <button class="close-btn" onclick="closeModal('modal-ai-routine')">✕</button>
     </div>
     <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
-      <div class="input-group">
-        <label>운동 목적</label>
-        <select class="select" id="ai-goal">
-          <option value="체중감량">체중감량 / 다이어트</option>
-          <option value="근비대">근육 증가 / 근비대</option>
-          <option value="체력향상">체력 향상 / 퍼포먼스</option>
-          <option value="건강관리">건강 관리 / 유지</option>
-          <option value="재활">재활 / 기초 체력</option>
-        </select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="input-group" style="margin:0">
+          <label>운동 목적</label>
+          <select class="select" id="ai-goal">
+            <option value="체중감량">체중감량 / 다이어트</option>
+            <option value="근비대">근육 증가 / 근비대</option>
+            <option value="체력향상">체력 향상 / 퍼포먼스</option>
+            <option value="건강관리">건강 관리 / 유지</option>
+            <option value="재활">재활 / 기초 체력</option>
+          </select>
+        </div>
+        <div class="input-group" style="margin:0">
+          <label>운동 시간</label>
+          <select class="select" id="ai-duration">
+            <option value="30분">30분</option>
+            <option value="45분">45분</option>
+            <option value="60분" selected>60분</option>
+            <option value="90분">90분</option>
+          </select>
+        </div>
+        <div class="input-group" style="margin:0">
+          <label>운동 경력</label>
+          <select class="select" id="ai-level">
+            <option value="초보">초보 (6개월 미만)</option>
+            <option value="중급" selected>중급 (6개월~2년)</option>
+            <option value="고급">고급 (2년 이상)</option>
+          </select>
+        </div>
+        <div class="input-group" style="margin:0">
+          <label>나이</label>
+          <input class="input" type="number" id="ai-age" placeholder="예: 35" min="10" max="90" style="width:100%">
+        </div>
       </div>
       <div class="input-group">
-        <label>운동 시간</label>
-        <select class="select" id="ai-duration">
-          <option value="30분">30분</option>
-          <option value="45분">45분</option>
-          <option value="60분" selected>60분</option>
-          <option value="90분">90분</option>
-        </select>
+        <label>운동 부위 선택 <span style="font-weight:400;color:var(--text-2)">(복수 선택 가능)</span></label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="ai-parts-grid">
+          ${['하체','가슴','등','어깨','팔','복부','코어','기능성/전신','유산소'].map(p=>`
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:16px;border:1.5px solid var(--border);cursor:pointer;font-size:0.8rem;user-select:none" id="ai-part-label-${p}">
+              <input type="checkbox" value="${p}" class="ai-part-cb" style="display:none" onchange="togglePartLabel('${p}')"> ${p}
+            </label>`).join('')}
+        </div>
       </div>
       <div class="input-group">
-        <label>운동 경력</label>
-        <select class="select" id="ai-level">
-          <option value="초보">초보 (6개월 미만)</option>
-          <option value="중급" selected>중급 (6개월~2년)</option>
-          <option value="고급">고급 (2년 이상)</option>
-        </select>
-      </div>
-      <div class="input-group">
-        <label>집중 부위 / 특이사항 <span style="font-weight:400;color:var(--text-2)">(선택)</span></label>
-        <input class="input" type="text" id="ai-note" placeholder="예: 하체 위주, 무릎 부상 주의, 기구 없음">
+        <label>특이사항 <span style="font-weight:400;color:var(--text-2)">(선택)</span></label>
+        <input class="input" type="text" id="ai-note" placeholder="예: 무릎 부상 주의, 기구 없음, 홈트">
       </div>
       <div id="ai-result" style="display:none">
         <div style="background:var(--bg);border-radius:10px;padding:14px;max-height:280px;overflow-y:auto" id="ai-result-body"></div>
@@ -903,7 +918,7 @@
 </div>
 
 <div id="toast"></div>
-<script src="js/db.js?v=5"></script>
+<script src="js/db.js?v=6"></script>
 <script>
 if (DB.getRole() !== 'admin') { location.href = 'index.html'; }
 
@@ -1839,25 +1854,102 @@ function openAiRoutineModal() {
   document.getElementById('modal-ai-routine').classList.add('active');
 }
 
+function togglePartLabel(part) {
+  const label = document.getElementById('ai-part-label-' + part);
+  const cb = label?.querySelector('input');
+  if (!label || !cb) return;
+  label.style.borderColor = cb.checked ? 'var(--primary)' : 'var(--border)';
+  label.style.background  = cb.checked ? 'var(--primary-light)' : '';
+  label.style.color       = cb.checked ? 'var(--primary)' : '';
+}
+
+function getSelectedParts() {
+  return [...document.querySelectorAll('.ai-part-cb:checked')].map(cb => cb.value);
+}
+
 function generateAiRoutine() {
   const goal     = document.getElementById('ai-goal').value;
   const duration = document.getElementById('ai-duration').value;
   const level    = document.getElementById('ai-level').value;
+  const age      = parseInt(document.getElementById('ai-age').value) || 30;
   const note     = document.getElementById('ai-note').value.trim().toLowerCase();
+  const parts    = getSelectedParts(); // 선택된 부위 배열
 
   document.getElementById('ai-result').style.display = 'none';
   document.getElementById('ai-error').style.display = 'none';
 
   const mins = parseInt(duration) || 60;
-  const warmupN   = mins <= 30 ? 2 : 3;
-  const cooldownN = mins <= 30 ? 1 : 2;
+  const warmupN   = mins <= 30 ? 2 : age >= 50 ? 4 : 3;
+  const cooldownN = mins <= 30 ? 1 : age >= 50 ? 3 : 2;
   const mainN     = mins <= 30 ? 5 : mins <= 45 ? 7 : mins <= 60 ? 9 : 13;
 
+  // 나이 보정: 50세 이상 강도 하향, 휴식 증가
+  const ageAdj = age >= 60 ? 2 : age >= 50 ? 1 : 0;
+
+  // 경력별 기본값
+  const BASE = {
+    '초보': { sets:2, setsH:2, rest:'60초', longRest:'90초' },
+    '중급': { sets:3, setsH:3, rest:'60초', longRest:'90초' },
+    '고급': { sets:4, setsH:4, rest:'45초', longRest:'120초' }
+  }[level] || { sets:3, setsH:3, rest:'60초', longRest:'90초' };
+
+  // 목적별 중량·반복수 세팅 (나이 보정 포함)
+  const WT = {
+    '체중감량': {
+      reps: age >= 50 ? '15-20회' : '15-20회',
+      heavyReps: '12-15회',
+      wt: level==='초보' ? '1RM의 40-50% (약 20RM)' : level==='중급' ? '1RM의 50-60% (약 15-20RM)' : '1RM의 55-65% (약 15RM)',
+      sets: Math.max(2, BASE.sets - ageAdj),
+      rest: '45-60초',
+      longRest: '60초',
+      note: '고반복·짧은 휴식으로 심박수 유지'
+    },
+    '근비대': {
+      reps: age >= 50 ? '10-15회' : '8-12회',
+      heavyReps: age >= 50 ? '10-12회' : '6-8회',
+      wt: level==='초보' ? '1RM의 55-65% (약 12-15RM)' : level==='중급' ? '1RM의 65-75% (약 8-12RM)' : '1RM의 70-80% (약 8-10RM)',
+      sets: Math.max(2, BASE.sets - Math.floor(ageAdj/2)),
+      rest: age >= 50 ? '90초' : '60-90초',
+      longRest: age >= 50 ? '120초' : '90-120초',
+      note: '마지막 2회는 힘들어야 효과적'
+    },
+    '체력향상': {
+      reps: '10-15회',
+      heavyReps: '8-10회',
+      wt: level==='초보' ? '1RM의 50-60% (편안한 무게)' : level==='중급' ? '1RM의 60-70% (중간 무게)' : '1RM의 65-75%',
+      sets: Math.max(2, BASE.sets - Math.floor(ageAdj/2)),
+      rest: '45-60초',
+      longRest: '90초',
+      note: '복합 동작 위주, 전신 에너지 시스템 자극'
+    },
+    '건강관리': {
+      reps: '12-15회',
+      heavyReps: '10-12회',
+      wt: level==='초보' ? '1RM의 40-50% (매우 가볍게)' : level==='중급' ? '1RM의 50-60% (편안한 무게)' : '1RM의 55-65%',
+      sets: Math.max(2, BASE.sets - ageAdj),
+      rest: '60초',
+      longRest: '90초',
+      note: age >= 50 ? '관절 무리 없는 범위에서 수행' : '통증 없는 범위에서 꾸준히'
+    },
+    '재활': {
+      reps: '15-20회',
+      heavyReps: '12-15회',
+      wt: '체중 또는 매우 가벼운 무게',
+      sets: 2,
+      rest: '60-90초',
+      longRest: '90초',
+      note: '통증 없는 범위 내에서만, 불편하면 즉시 중단'
+    }
+  }[goal] || {};
+
   const C = {
-    '초보': { sets:2, reps:'12-15회', heavyReps:'10-12회', rest:'60초', longRest:'90초',  wt:'가벼운 무게' },
-    '중급': { sets:3, reps:'10-12회', heavyReps:'8-10회',  rest:'60초', longRest:'90초',  wt:'중간 무게'   },
-    '고급': { sets:4, reps:'8-10회',  heavyReps:'5-8회',   rest:'45초', longRest:'120초', wt:'무거운 무게' }
-  }[level] || { sets:3, reps:'10-12회', heavyReps:'8-10회', rest:'60초', longRest:'90초', wt:'중간 무게' };
+    sets: WT.sets ?? 3,
+    reps: WT.reps ?? '10-12회',
+    heavyReps: WT.heavyReps ?? '8-10회',
+    rest: WT.rest ?? '60초',
+    longRest: WT.longRest ?? '90초',
+    wt: WT.wt ?? '중간 무게'
+  };
 
   const WARMUP = [
     { name:'트레드밀',               category:'유산소',   sets:1, reps:'5분',     weight:'가볍게', rest:'없음' },
@@ -1954,23 +2046,42 @@ function generateAiRoutine() {
 
   const pool = POOLS[goal] || POOLS['건강관리'];
 
-  // 특이사항 키워드로 해당 부위 운동 우선 배치
-  const KEYWORD_CAT = {하체:'하체',등:'등',가슴:'가슴',어깨:'어깨',팔:'팔',복부:'복부',코어:'코어',유산소:'유산소'};
+  // 부위 체크박스 → 해당 카테고리 우선 배치
+  // "기능성/전신" 선택 시 기능성 포함
+  const catMap = { '기능성/전신': ['기능성', '코어'], '유산소': ['유산소'] };
+  const selectedCats = parts.length
+    ? parts.flatMap(p => catMap[p] || [p])
+    : [];
+
   let main = [...pool.main];
-  if (note) {
+  if (selectedCats.length) {
+    // 선택 부위 운동 먼저, 나머지 뒤에
+    main = [
+      ...main.filter(e => selectedCats.includes(e.category)),
+      ...main.filter(e => !selectedCats.includes(e.category))
+    ];
+  } else if (note) {
+    // 특이사항 키워드 fallback
+    const KEYWORD_CAT = {하체:'하체',등:'등',가슴:'가슴',어깨:'어깨',팔:'팔',복부:'복부',코어:'코어',유산소:'유산소'};
     const hit = Object.entries(KEYWORD_CAT).find(([k]) => note.includes(k));
     if (hit) { const cat = hit[1]; main = [...main.filter(e=>e.category===cat), ...main.filter(e=>e.category!==cat)]; }
   }
 
+  const partLabel = parts.length ? ` (${parts.join('·')})` : '';
+  const ageLabel  = age ? ` · ${age}세` : '';
+
   aiGeneratedRoutine = {
-    title: pool.title,
-    description: pool.desc,
+    title: pool.title + partLabel,
+    description: pool.desc + (WT.note ? ` ※ ${WT.note}` : '') + (ageLabel ? ` [${age}세 기준]` : ''),
     exercises: [...WARMUP.slice(0, warmupN), ...main.slice(0, mainN), ...COOLDOWN.slice(0, cooldownN)]
   };
 
   document.getElementById('ai-result-body').innerHTML = `
-    <div style="font-weight:700;font-size:0.95rem;margin-bottom:4px">${aiGeneratedRoutine.title}</div>
-    <div style="font-size:0.8rem;color:var(--text-2);margin-bottom:12px">${aiGeneratedRoutine.description}</div>
+    <div style="font-weight:700;font-size:0.95rem;margin-bottom:2px">${aiGeneratedRoutine.title}</div>
+    <div style="font-size:0.78rem;color:var(--text-2);margin-bottom:6px">${aiGeneratedRoutine.description}</div>
+    <div style="font-size:0.78rem;background:var(--primary-light);color:var(--primary);padding:7px 10px;border-radius:7px;margin-bottom:10px">
+      💡 <b>중량 기준:</b> ${C.wt}
+    </div>
     ${aiGeneratedRoutine.exercises.map((e, i) => `
       <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:0.82rem">
         <div style="font-weight:600">${i+1}. ${e.name} <span class="badge badge-purple" style="font-size:0.68rem">${e.category}</span></div>
