@@ -263,7 +263,7 @@
 <datalist id="exercise-list"></datalist>
 
 <div id="toast"></div>
-<script src="js/db.js?v=10"></script>
+<script src="js/db.js?v=11"></script>
 <script>
 if (DB.getRole() !== 'member') { location.href = 'index.html'; }
 
@@ -758,49 +758,46 @@ function getWeekStart(date) {
 
 function renderPersonalLogs() {
   const el = document.getElementById('weekly-log-list');
+  const todayStr = today.toISOString().split('T')[0];
 
-  // 최근 12주 + 기록 있는 주 모두 포함
   const weeks = new Set();
   const now = new Date();
   for (let i = 0; i < 12; i++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i * 7);
+    const d = new Date(now); d.setDate(now.getDate() - i * 7);
     weeks.add(getWeekStart(d.toISOString().split('T')[0]));
   }
-  // 과거 기록이 있는 주도 추가
   DB.getMemberPersonalLogs(memberId).forEach(l => weeks.add(getWeekStart(l.date)));
 
   const sorted = [...weeks].sort((a, b) => b.localeCompare(a));
+  const DAY_NAMES = ['월', '화', '수', '목', '금', '토'];
 
   el.innerHTML = sorted.map(ws => {
-    const we = new Date(ws + 'T00:00:00');
-    we.setDate(we.getDate() + 6);
     const wsDate = new Date(ws + 'T00:00:00');
-    const label = `${wsDate.toLocaleDateString('ko-KR', {month:'long', day:'numeric'})} ~ ${we.toLocaleDateString('ko-KR', {month:'long', day:'numeric'})}`;
-    const isCurrentWeek = ws === getWeekStart(today.toISOString().split('T')[0]);
+    const weDate = new Date(ws + 'T00:00:00'); weDate.setDate(weDate.getDate() + 6);
+    const isCurrentWeek = ws === getWeekStart(todayStr);
+    const label = `${wsDate.getMonth()+1}.${wsDate.getDate()} - ${weDate.getMonth()+1}.${weDate.getDate()}`;
 
-    const checkin = DB.getWeeklyCheckin(memberId, ws);
-    const logs = DB.getMemberPersonalLogs(memberId).filter(l => getWeekStart(l.date) === ws);
     const trainerRoutine = DB.getMemberWeeklyRoutine(memberId, ws);
+    const allLogs = DB.getMemberPersonalLogs(memberId).filter(l => getWeekStart(l.date) === ws);
 
-    const conditionBtns = CONDITION_OPTIONS.map(o => `
-      <button onclick="setCondition('${ws}','${o.value}')"
-        style="padding:6px 10px;border-radius:20px;border:1.5px solid ${checkin?.condition===o.value?'var(--primary)':'var(--border)'};background:${checkin?.condition===o.value?'var(--primary-light)':'#fff'};cursor:pointer;font-size:0.8rem;transition:all 0.12s">
-        ${o.emoji} ${o.label}
-      </button>`).join('');
+    const dayBoxes = DAY_NAMES.map((d, i) => {
+      const dayDate = new Date(wsDate); dayDate.setDate(wsDate.getDate() + i);
+      const dayStr = dayDate.toISOString().split('T')[0];
+      const isToday = dayStr === todayStr;
+      const dayLogs = allLogs.filter(l => l.date === dayStr);
+      const trainerDay = trainerRoutine?.days?.[d];
+      const hasRoutine = trainerDay && !trainerDay.rest && (trainerDay.exercises||[]).length > 0;
+      const isRest = trainerDay?.rest;
 
-    const logsHtml = logs.length ? logs.map(l => `
-      <div style="background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-weight:700;font-size:0.88rem">${l.title||'개인 운동'} <span style="font-weight:400;color:var(--text-2);font-size:0.78rem">${new Date(l.date+'T00:00:00').toLocaleDateString('ko-KR',{month:'short',day:'numeric',weekday:'short'})}</span></span>
-          <div style="display:flex;gap:4px">
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="editPersonalLog('${l.id}')">✏️</button>
-            <button class="btn btn-red btn-sm btn-icon" onclick="deletePersonalLog('${l.id}')">🗑</button>
-          </div>
-        </div>
-        ${(l.exercises||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(l.exercises||[]).map(e=>`<span style="font-size:0.75rem;background:var(--primary-light);color:var(--primary);padding:2px 7px;border-radius:10px">${e.name} ${e.sets}세트${e.weight?' · '+e.weight:''}</span>`).join('')}</div>`:''}
-        ${l.note?`<div style="font-size:0.78rem;color:var(--text-2)">${l.note}</div>`:''}
-      </div>`).join('') : '';
+      return `<div id="day-box-${ws}-${d}" onclick="toggleDayCard('${ws}','${d}','${dayStr}')"
+        style="flex:1;min-width:0;border-radius:10px;border:1.5px solid ${isToday?'var(--primary)':hasRoutine?'#c5b8ff':'var(--border)'};
+          background:${isToday?'var(--primary-light)':hasRoutine?'#f3f0ff':'#fafafa'};
+          padding:9px 3px;text-align:center;cursor:pointer;transition:all 0.15s">
+        <div style="font-size:0.82rem;font-weight:700;color:${isToday?'var(--primary)':hasRoutine?'#6c4fcf':'var(--text-2)'}">${d}</div>
+        <div style="font-size:0.58rem;margin-top:2px;color:${hasRoutine?'#6c4fcf':isRest?'var(--text-3)':'transparent'}">${hasRoutine?'루틴':isRest?'휴식':'·'}</div>
+        <div style="font-size:0.58rem;color:var(--primary);min-height:0.8rem">${dayLogs.length?dayLogs.length+'개':''}</div>
+      </div>`;
+    }).join('');
 
     return `
       <div class="card mb-3" style="${isCurrentWeek?'border:2px solid var(--primary)':''}">
@@ -810,35 +807,14 @@ function renderPersonalLogs() {
             <span style="font-size:0.85rem;font-weight:700">${label}</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            ${trainerRoutine?'<span style="font-size:0.7rem;background:#e8f5e9;color:#2e7d32;padding:2px 7px;border-radius:10px;font-weight:600">루틴 있음</span>':''}
-            ${checkin?.condition?`<span style="font-size:0.85rem">${CONDITION_OPTIONS.find(o=>o.value===checkin.condition)?.emoji||''}</span>`:''}
-            ${logs.length?`<span style="font-size:0.75rem;color:var(--primary);font-weight:600">${logs.length}개</span>`:''}
+            ${trainerRoutine?'<span style="font-size:0.7rem;background:#f3f0ff;color:#6c4fcf;padding:2px 7px;border-radius:10px;font-weight:600">루틴</span>':''}
+            ${allLogs.length?`<span style="font-size:0.75rem;color:var(--primary);font-weight:600">${allLogs.length}개</span>`:''}
             <span id="wk-arrow-${ws}" style="color:var(--text-3);transition:transform 0.2s">${isCurrentWeek?'▲':'▼'}</span>
           </div>
         </div>
-        <div id="wk-${ws}" style="padding:0 16px 14px;${isCurrentWeek?'':'display:none'}">
-          ${trainerRoutine ? (() => {
-            const days = trainerRoutine.days;
-            const dayOrder = ['월','화','수','목','금','토'];
-            let daysHtml = '';
-            if (days) {
-              daysHtml = dayOrder.map(d => {
-                const dd = days[d];
-                if (!dd) return '';
-                if (dd.rest) return `<div style="padding:5px 0;border-bottom:1px solid #ddd6ff;font-size:0.8rem;display:flex;gap:8px;align-items:center"><span style="font-weight:700;color:#6c4fcf;min-width:32px">${d}</span><span style="color:var(--text-3)">휴식</span></div>`;
-                return `<div style="padding:5px 0;border-bottom:1px solid #ddd6ff"><div style="font-weight:700;color:#6c4fcf;font-size:0.78rem;margin-bottom:3px">${d}요일</div>${(dd.exercises||[]).map(e=>`<div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:2px 0"><span style="font-weight:600">${e.name}</span><span style="color:#6c4fcf">${e.sets}세트×${e.reps}${e.weight?' · '+e.weight:''}</span></div>`).join('')}</div>`;
-              }).join('');
-            } else {
-              daysHtml = (trainerRoutine.exercises||[]).map(e=>`<div style="font-size:0.8rem;padding:4px 0;border-bottom:1px solid #ddd6ff;display:flex;justify-content:space-between"><span style="font-weight:600">${e.name}</span><span style="color:#6c4fcf">${e.sets}세트×${e.reps}${e.weight?' · '+e.weight:''}</span></div>`).join('');
-            }
-            return `<div style="background:linear-gradient(135deg,#f3f0ff,#e8f0ff);border-radius:10px;padding:12px 14px;margin-bottom:12px;border:1.5px solid #c5b8ff"><div style="font-size:0.78rem;font-weight:700;color:#6c4fcf;margin-bottom:8px">📋 ${trainerRoutine.title}</div>${daysHtml}${trainerRoutine.note?`<div style="font-size:0.75rem;color:#6c4fcf;margin-top:6px">💬 ${trainerRoutine.note}</div>`:''}</div>`;
-          })() : ''}
-          <div style="margin-bottom:10px">
-            <div style="font-size:0.78rem;font-weight:600;color:var(--text-2);margin-bottom:6px">이번 주 컨디션</div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">${conditionBtns}</div>
-          </div>
-          <div id="logs-${ws}">${logsHtml}</div>
-          <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="openPersonalLogModal(null,'${ws}')">+ 운동 기록 추가</button>
+        <div id="wk-${ws}" style="${isCurrentWeek?'':'display:none'}">
+          <div style="display:flex;gap:5px;padding:0 14px 12px">${dayBoxes}</div>
+          <div id="day-content-${ws}"></div>
         </div>
       </div>`;
   }).join('');
@@ -846,11 +822,68 @@ function renderPersonalLogs() {
 
 function toggleWeekCard(id) {
   const el = document.getElementById(id);
-  const ws = id.replace('wk-','');
-  const arrow = document.getElementById('wk-arrow-'+ws);
+  const ws = id.replace('wk-', '');
+  const arrow = document.getElementById('wk-arrow-' + ws);
   const open = el.style.display !== 'none';
   el.style.display = open ? 'none' : '';
   if (arrow) arrow.textContent = open ? '▼' : '▲';
+}
+
+function toggleDayCard(ws, day, dayStr) {
+  const container = document.getElementById(`day-content-${ws}`);
+  const DAY_NAMES = ['월', '화', '수', '목', '금', '토'];
+
+  DAY_NAMES.forEach(d => {
+    const box = document.getElementById(`day-box-${ws}-${d}`);
+    if (box) box.style.outline = '';
+  });
+
+  if (container.dataset.activeDay === day) {
+    container.innerHTML = '';
+    container.dataset.activeDay = '';
+    return;
+  }
+  container.dataset.activeDay = day;
+  document.getElementById(`day-box-${ws}-${day}`).style.outline = '2px solid var(--primary)';
+
+  const trainerRoutine = DB.getMemberWeeklyRoutine(memberId, ws);
+  const dayData = trainerRoutine?.days?.[day];
+  const logs = DB.getMemberPersonalLogs(memberId).filter(l => l.date === dayStr);
+
+  let html = '<div style="padding:0 14px 14px">';
+
+  if (dayData?.rest) {
+    html += `<div style="text-align:center;padding:12px;color:var(--text-3);font-size:0.85rem;background:#f9f9f9;border-radius:8px;margin-bottom:10px">🌙 휴식일</div>`;
+  } else if ((dayData?.exercises||[]).length > 0) {
+    html += `<div style="background:linear-gradient(135deg,#f3f0ff,#e8f0ff);border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #c5b8ff">
+      <div style="font-size:0.78rem;font-weight:700;color:#6c4fcf;margin-bottom:6px">📋 ${day}요일 루틴</div>
+      ${dayData.exercises.map(e=>`
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:4px 0;border-bottom:1px solid #ddd6ff">
+          <span style="font-weight:600">${e.name}</span>
+          <span style="color:#6c4fcf">${e.sets}세트×${e.reps}${e.weight?' · '+e.weight:''}</span>
+        </div>`).join('')}
+      ${trainerRoutine.note?`<div style="font-size:0.75rem;color:#6c4fcf;margin-top:6px">💬 ${trainerRoutine.note}</div>`:''}
+    </div>`;
+  }
+
+  if (logs.length) {
+    html += logs.map(l => `
+      <div style="background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-weight:700;font-size:0.88rem">${l.title||'개인 운동'}</span>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="editPersonalLog('${l.id}')">✏️</button>
+            <button class="btn btn-red btn-sm btn-icon" onclick="deletePersonalLog('${l.id}')">🗑</button>
+          </div>
+        </div>
+        ${(l.exercises||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${(l.exercises||[]).map(e=>`<span style="font-size:0.75rem;background:var(--primary-light);color:var(--primary);padding:2px 7px;border-radius:10px">${e.name} ${e.sets}세트${e.weight?' · '+e.weight:''}</span>`).join('')}</div>`:''}
+        ${l.note?`<div style="font-size:0.78rem;color:var(--text-2)">${l.note}</div>`:''}
+      </div>`).join('');
+  }
+
+  html += `<button class="btn btn-primary btn-sm" style="width:100%;margin-top:4px" onclick="openPersonalLogModal(null,'${dayStr}')">+ 운동 기록 추가</button>`;
+  html += '</div>';
+  container.innerHTML = html;
 }
 
 function setCondition(weekStart, condition) {
